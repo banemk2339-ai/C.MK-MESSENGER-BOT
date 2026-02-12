@@ -1,0 +1,141 @@
+{
+  "facebookAccount": {
+    "email": "",
+    "password": "",
+    "2FASecret": "",
+    "i_user": "",
+    "proxy": null,
+    "userAgent": "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
+    "intervalGetNewCookie": 1440,
+    "notes": "time the system automatically retrieves new cookies from email/password, unit is minute."
+  },
+  "antiInbox": false,
+  "language": "en",
+  "notesLanguage": "change to your language with ISO 639-1 code, available languages: vi (Vietnamese), en (English)",
+  "nickNameBot": "MK-BOT✨",
+  "prefix": "+",
+  "adminOnly": {
+    "enable": false,
+    "ignoreCommand": []
+  },
+  "adminBot": [
+    "61554168931047"
+  ],
+  "premiumUsers": [
+    "61554168931047"
+  ],
+  "devUsers": [
+    "61554168931047",
+    "61581930980314"
+  ],
+  "notes_premiumUsers": "List of user IDs with premium access (role 3)",
+  "notes_devUsers": "List of developer IDs with full access (role 4)",
+  "whiteListMode": {
+    "enable": false,
+    "whiteListIds": [
+      "100083039411474",
+      "61554168931047"
+    ],
+    "notes": "if you enable this feature, only the ids in the whiteListIds list can use the bot"
+  },
+  "whiteListModeThread": {
+    "enable": false,
+    "whiteListThreadIds": [],
+    "notes": "if you enable this feature, only the thread in the whiteListThreadIds list can use the bot"
+  },
+  "database": {
+    "type": "mongodb",
+    "uriMongodb": "mongodb+srv://Charles_Goatbot:bane2339@cluster0.obbefvz.mongodb.net/CharlesMK_DB?retryWrites=true&w=majority&appName=Cluster0",
+    "autoSyncWhenStart": true,
+    "autoRefreshThreadInfoFirstTime": true,
+    "notes": "Using MongoDB to prevent data loss on Render. autoSyncWhenStart is set to true to ensure data persistence."
+  },
+  "timeZone": "Africa/Johannesburg",
+  "dashBoard": {
+    "enable": true,
+    "expireVerifyCode": 300000,
+    "port": 3001
+  },
+  "serverUptime": {
+    "enable": false,
+    "port": 3001,
+    "socket": {
+      "enable": true,
+      "channelName": "uptime",
+      "verifyToken": "8126831f37f9cb8d6ba35489bac1ac619b114178e9617613ae8277ed4328fa3f"
+    }
+  },
+  "spamProtection": {
+    "commandThreshold": 8,
+    "timeWindow": 10,
+    "banDuration": 24,
+    "notes": "Auto-ban threads when users spam commands."
+  },
+  "autoRestart": {
+    "time": null,
+    "notes": "If you set time is 0 or false or null, the bot will not auto restart"
+  },
+  "autoUptime": {
+    "enable": false,
+    "timeInterval": 180,
+    "url": "",
+    "notes": "the value of timeInterval is seconds"
+  },
+  "autoLoadScripts": {
+    "enable": false,
+    "ignoreCmds": "",
+    "ignoreEvents": "",
+    "notes": "this feature will automatically load the script when scripts have been changed"
+  },
+  "autoRefreshFbstate": true,
+  "autoReloginWhenChangeAccount": false,
+  "autoRestartWhenListenMqttError": false,
+  "restartListenMqtt": {
+    "enable": true,
+    "timeRestart": 3600000,
+    "delayAfterStopListening": 2000,
+    "logNoti": true
+  },
+  "notiWhenListenMqttError": {
+    "telegram": {
+      "enable": false,
+      "botToken": "",
+      "chatId": ""
+    },
+    "discordHook": {
+      "enable": false,
+      "webhookUrl": ""
+    }
+  },
+  "hideNotiMessage": {
+    "commandNotFound": false,
+    "adminOnly": false,
+    "threadBanned": false,
+    "userBanned": false,
+    "needRoleToUseCmd": false,
+    "needRoleToUseCmdOnReply": false,
+    "needRoleToUseCmdOnReaction": false
+  },
+  "logEvents": {
+    "disableAll": false,
+    "message": true,
+    "message_reaction": true,
+    "message_unsend": true,
+    "message_reply": true,
+    "event": true,
+    "read_receipt": false,
+    "typ": false,
+    "presence": false
+  },
+  "optionsFca": {
+    "forceLogin": true,
+    "listenEvents": true,
+    "updatePresence": true,
+    "listenTyping": true,
+    "logLevel": "error",
+    "selfListen": false,
+    "selfListenEvent": true,
+    "autoMarkDelivery": false,
+    "autoReconnect": false
+  }
+}
