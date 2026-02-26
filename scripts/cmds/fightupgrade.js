@@ -75,9 +75,11 @@ const SHOP = {
       maxLevel: 10, type: "passive", stat: "fightAgilityBonus", gain: 5,
     },
     hpup: {
-      label: "𝗛𝗲𝗮𝗹𝘁𝗵 𝗕𝗼𝗼𝘀𝘁", cost: 5_000_000,
-      desc:  "+50 max HP per purchase (no level cap — stack as much as you want!).",
-      maxLevel: Infinity, type: "hpup",
+      label:    "𝗛𝗲𝗮𝗹𝘁𝗵 𝗕𝗼𝗼𝘀𝘁",
+      cost:     5_000_000,
+      desc:     "+50 max HP per purchase (limit: 5,000 bonus HP / 5,100 total HP).",
+      maxBonus: 5000,   // hard cap on fightBonusHP
+      type:     "hpup",
     },
   },
 
@@ -128,15 +130,15 @@ module.exports = {
     if (sub === "info" && args[1]) {
       const id   = args[1].toLowerCase();
       const item = ALL_ITEMS[id];
-      if (!item) return message.send("❌ 𝗜𝘁𝗲𝗺 𝗻𝗼𝘁 𝗳𝗼𝘂𝗻𝗱. Use +fightupgrade to see the shop.");
+      if (!item) return message.send("❌ Item not found. Use +fightupgrade to see the shop.");
       return message.send(
         `🔍 𝗜𝗧𝗘𝗠 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `📦 ${item.label}\n` +
-        `💵 𝗖𝗼𝘀𝘁: ${fmt(item.cost)}\n` +
+        `💵 Cost: ${fmt(item.cost)}\n` +
         `📋 ${item.desc}\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `𝘜𝘴𝘦: +fightupgrade buy ${id}`
+        `Use: +fightupgrade buy ${id}`
       );
     }
 
@@ -144,20 +146,20 @@ module.exports = {
     if (sub === "buy" && args[1]) {
       const id   = args[1].toLowerCase();
       const item = ALL_ITEMS[id];
-      if (!item) return message.send("❌ 𝗜𝘁𝗲𝗺 𝗻𝗼𝘁 𝗳𝗼𝘂𝗻𝗱.");
+      if (!item) return message.send("❌ Item not found.");
 
       const userData = await usersData.get(senderID);
       const data     = userData.data || {};
 
-      // ── Trait check ──────────────────────────────────────
+      // ── Trait ────────────────────────────────────────────
       if (item.type === "trait") {
         if (data.fightTrait)
           return message.send(
-            `❌ 𝗬𝗼𝘂 𝗮𝗹𝗿𝗲𝗮𝗱𝘆 𝗵𝗮𝘃𝗲 𝗮 𝘁𝗿𝗮𝗶𝘁: ${SHOP.traits[data.fightTrait]?.label || data.fightTrait}\n` +
+            `❌ You already have a trait: ${SHOP.traits[data.fightTrait]?.label || data.fightTrait}\n` +
             `Traits cannot be replaced.`
           );
         if (userData.money < item.cost)
-          return message.send(`❌ 𝗜𝗻𝘀𝘂𝗳𝗳𝗶𝗰𝗶𝗲𝗻𝘁 𝗳𝘂𝗻𝗱𝘀!\n💵 𝗕𝗮𝗹𝗮𝗻𝗰𝗲: ${fmt(userData.money)}\n💸 𝗡𝗲𝗲𝗱: ${fmt(item.cost)}`);
+          return message.send(`❌ Insufficient funds!\n💵 Balance: ${fmt(userData.money)}\n💸 Need: ${fmt(item.cost)}`);
 
         await usersData.set(senderID, {
           money: userData.money - item.cost,
@@ -165,20 +167,20 @@ module.exports = {
         });
         return message.send(
           `✅ 𝗧𝗿𝗮𝗶𝘁 𝗨𝗻𝗹𝗼𝗰𝗸𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `🧬 ${item.label} 𝗶𝘀 𝗻𝗼𝘄 𝗮𝗰𝘁𝗶𝘃𝗲!\n` +
+          `🧬 ${item.label} is now active!\n` +
           `📋 ${item.desc}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💰 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: ${fmt(userData.money - item.cost)}`
+          `💰 Remaining: ${fmt(userData.money - item.cost)}`
         );
       }
 
-      // ── Skill check ──────────────────────────────────────
+      // ── Skill ────────────────────────────────────────────
       if (item.type === "skill") {
         const skills = data.fightSkills || {};
         if (skills[id] >= 1)
-          return message.send(`✅ 𝗬𝗼𝘂 𝗮𝗹𝗿𝗲𝗮𝗱𝘆 𝗼𝘄𝗻 ${item.label}.`);
+          return message.send(`✅ You already own ${item.label}.`);
         if (userData.money < item.cost)
-          return message.send(`❌ 𝗜𝗻𝘀𝘂𝗳𝗳𝗶𝗰𝗶𝗲𝗻𝘁 𝗳𝘂𝗻𝗱𝘀!\n💵 𝗕𝗮𝗹𝗮𝗻𝗰𝗲: ${fmt(userData.money)}\n💸 𝗡𝗲𝗲𝗱: ${fmt(item.cost)}`);
+          return message.send(`❌ Insufficient funds!\n💵 Balance: ${fmt(userData.money)}\n💸 Need: ${fmt(item.cost)}`);
 
         skills[id] = 1;
         await usersData.set(senderID, {
@@ -187,76 +189,95 @@ module.exports = {
         });
         return message.send(
           `✅ 𝗦𝗸𝗶𝗹𝗹 𝗨𝗻𝗹𝗼𝗰𝗸𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `⚔️ ${item.label} 𝗶𝘀 𝗻𝗼𝘄 𝗮𝘃𝗮𝗶𝗹𝗮𝗯𝗹𝗲!\n` +
+          `⚔️ ${item.label} is now available!\n` +
           `📋 ${item.desc}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💰 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: ${fmt(userData.money - item.cost)}`
+          `💰 Remaining: ${fmt(userData.money - item.cost)}`
         );
       }
 
-      // ── Passive check ────────────────────────────────────
+      // ── Passive ──────────────────────────────────────────
       if (item.type === "passive") {
         const curLevel = data[`${item.stat}Level`] || 0;
         if (curLevel >= item.maxLevel)
-          return message.send(`❌ ${item.label} 𝗶𝘀 𝗮𝘁 𝗺𝗮𝘅 𝗹𝗲𝘃𝗲𝗹 (${item.maxLevel}).`);
+          return message.send(`❌ ${item.label} is at max level (${item.maxLevel}).`);
 
         const scaledCost = item.cost * (curLevel + 1);
         if (userData.money < scaledCost)
-          return message.send(`❌ 𝗜𝗻𝘀𝘂𝗳𝗳𝗶𝗰𝗶𝗲𝗻𝘁 𝗳𝘂𝗻𝗱𝘀!\n💵 𝗕𝗮𝗹𝗮𝗻𝗰𝗲: ${fmt(userData.money)}\n💸 𝗡𝗲𝗲𝗱: ${fmt(scaledCost)} (𝗟𝘃.${curLevel + 1})`);
+          return message.send(`❌ Insufficient funds!\n💵 Balance: ${fmt(userData.money)}\n💸 Need: ${fmt(scaledCost)} (Lv.${curLevel + 1})`);
 
-        const newLevel    = curLevel + 1;
-        const newStatVal  = (data[item.stat] || 0) + item.gain;
+        const newLevel   = curLevel + 1;
+        const newStatVal = (data[item.stat] || 0) + item.gain;
 
         await usersData.set(senderID, {
           money: userData.money - scaledCost,
           data: {
             ...data,
-            [item.stat]:              newStatVal,
-            [`${item.stat}Level`]:    newLevel,
+            [item.stat]:           newStatVal,
+            [`${item.stat}Level`]: newLevel,
           },
         });
         return message.send(
           `✅ 𝗨𝗽𝗴𝗿𝗮𝗱𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `📈 ${item.label} → 𝗟𝘃.${newLevel}\n` +
-          `💪 +${item.gain} applied (𝗧𝗼𝘁𝗮𝗹: ${newStatVal})\n` +
+          `📈 ${item.label} → Lv.${newLevel}\n` +
+          `💪 +${item.gain} applied (Total: ${newStatVal})\n` +
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💰 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: ${fmt(userData.money - scaledCost)}\n` +
+          `💰 Remaining: ${fmt(userData.money - scaledCost)}\n` +
           (newLevel < item.maxLevel
-            ? `🔼 𝗡𝗲𝘅𝘁 𝘂𝗽𝗴𝗿𝗮𝗱𝗲: ${fmt(item.cost * (newLevel + 1))}`
-            : `🏆 𝗠𝗔𝗫 𝗟𝗘𝗩𝗘𝗟 𝗥𝗘𝗔𝗖𝗛𝗘𝗗!`)
+            ? `🔼 Next upgrade: ${fmt(item.cost * (newLevel + 1))}`
+            : `🏆 MAX LEVEL REACHED!`)
         );
       }
 
       // ── HP Upgrade ───────────────────────────────────────
       if (item.type === "hpup") {
-        if (userData.money < item.cost)
-          return message.send(`❌ 𝗜𝗻𝘀𝘂𝗳𝗳𝗶𝗰𝗶𝗲𝗻𝘁 𝗳𝘂𝗻𝗱𝘀!\n💵 𝗕𝗮𝗹𝗮𝗻𝗰𝗲: ${fmt(userData.money)}\n💸 𝗡𝗲𝗲𝗱: ${fmt(item.cost)}`);
+        const curBonus = data.fightBonusHP || 0;
 
-        const curHP    = data.fightBonusHP || 0;
-        const newHP    = curHP + 50;
+        // Hard cap check
+        if (curBonus >= item.maxBonus)
+          return message.send(
+            `❌ 𝗛𝗣 𝗖𝗮𝗽 𝗥𝗲𝗮𝗰𝗵𝗲𝗱!\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `❤️ Your bonus HP is already at the maximum:\n` +
+            `   ${curBonus} / ${item.maxBonus} bonus HP\n` +
+            `   (${100 + curBonus} total max HP)\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `You cannot purchase any more HP upgrades.`
+          );
+
+        if (userData.money < item.cost)
+          return message.send(`❌ Insufficient funds!\n💵 Balance: ${fmt(userData.money)}\n💸 Need: ${fmt(item.cost)}`);
+
+        const newBonus = curBonus + 50;
         const newMoney = userData.money - item.cost;
+        const atCap    = newBonus >= item.maxBonus;
 
         await usersData.set(senderID, {
           money: newMoney,
-          data: { ...data, fightBonusHP: newHP },
+          data: { ...data, fightBonusHP: newBonus },
         });
         return message.send(
-          `✅ 𝗛𝗲𝗮𝗹𝘁𝗵 𝗨𝗽𝗴𝗿𝗮𝗱𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `❤️ 𝗠𝗮𝘅 𝗛𝗣: ${100 + curHP} → ${100 + newHP}\n` +
-          `💪 +50 𝗛𝗣 𝗮𝗱𝗱𝗲𝗱 𝘁𝗼 𝘆𝗼𝘂𝗿 𝗳𝗶𝗴𝗵𝘁 𝗽𝗼𝗼𝗹!\n` +
+          `✅ 𝗛𝗲𝗮𝗹𝘁𝗵 𝗨𝗽𝗴𝗿𝗮𝗱𝗲𝗱!\n` +
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💰 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: ${fmt(newMoney)}\n` +
-          `🔼 𝘉𝘶𝘺 𝘢𝘨𝘢𝘪𝘯 𝘧𝘰𝘳 𝘢𝘯𝘰𝘵𝘩𝘦𝘳 +50 𝘏𝘗!`
+          `❤️ Max HP: ${100 + curBonus} → ${100 + newBonus}\n` +
+          `💪 +50 HP added!\n` +
+          `📊 Bonus HP: ${newBonus} / ${item.maxBonus}\n` +
+          `   [${hpCapBar(newBonus, item.maxBonus)}]\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `💰 Remaining: ${fmt(newMoney)}\n` +
+          (atCap
+            ? `🏆 MAX HP REACHED! You cannot buy more HP upgrades.`
+            : `🔼 Buy again for another +50 HP (${item.maxBonus - newBonus} HP remaining until cap)`)
         );
       }
 
-      // ── Ability unlock ───────────────────────────────────
+      // ── Ability ──────────────────────────────────────────
       if (item.type === "ability") {
         const abilities = data.fightAbilities || {};
         if (abilities[id])
-          return message.send(`✅ 𝗬𝗼𝘂 𝗮𝗹𝗿𝗲𝗮𝗱𝘆 𝗼𝘄𝗻 ${item.label}.`);
+          return message.send(`✅ You already own ${item.label}.`);
         if (userData.money < item.cost)
-          return message.send(`❌ 𝗜𝗻𝘀𝘂𝗳𝗳𝗶𝗰𝗶𝗲𝗻𝘁 𝗳𝘂𝗻𝗱𝘀!\n💵 𝗕𝗮𝗹𝗮𝗻𝗰𝗲: ${fmt(userData.money)}\n💸 𝗡𝗲𝗲𝗱: ${fmt(item.cost)}`);
+          return message.send(`❌ Insufficient funds!\n💵 Balance: ${fmt(userData.money)}\n💸 Need: ${fmt(item.cost)}`);
 
         abilities[id] = true;
         await usersData.set(senderID, {
@@ -265,48 +286,70 @@ module.exports = {
         });
         return message.send(
           `✅ 𝗔𝗯𝗶𝗹𝗶𝘁𝘆 𝗨𝗻𝗹𝗼𝗰𝗸𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💚 ${item.label} 𝗶𝘀 𝗻𝗼𝘄 𝘂𝘀𝗮𝗯𝗹𝗲 𝗶𝗻 𝗳𝗶𝗴𝗵𝘁!\n` +
+          `💚 ${item.label} is now usable in fight!\n` +
           `📋 ${item.desc}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💰 𝗥𝗲𝗺𝗮𝗶𝗻𝗶𝗻𝗴: ${fmt(userData.money - item.cost)}`
+          `💰 Remaining: ${fmt(userData.money - item.cost)}`
         );
       }
 
-      return message.send("❌ 𝗨𝗻𝗸𝗻𝗼𝘄𝗻 𝗶𝘁𝗲𝗺 𝘁𝘆𝗽𝗲.");
+      return message.send("❌ Unknown item type.");
     }
 
     // ── Shop listing ───────────────────────────────────────
+    const userData = await usersData.get(senderID);
+    const data     = userData?.data || {};
+    const curBonus = data.fightBonusHP || 0;
+    const hpItem   = SHOP.passives.hpup;
+
     let msg =
       `🛒 𝗙𝗜𝗚𝗛𝗧 𝗦𝗛𝗢𝗣\n` +
       `━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `𝘜𝘴𝘦: +fightupgrade buy [id]\n\n`;
+      `Use: +fightupgrade buy [id]\n\n`;
 
-    msg += `🧬 𝗧𝗥𝗔𝗜𝗧𝗦 (𝗣𝗲𝗿𝗺𝗮𝗻𝗲𝗻𝘁, 𝗮𝗹𝘄𝗮𝘆𝘀 𝗮𝗰𝘁𝗶𝘃𝗲)\n`;
+    msg += `🧬 𝗧𝗥𝗔𝗜𝗧𝗦 (Permanent, always active)\n`;
     for (const [id, item] of Object.entries(SHOP.traits)) {
-      msg += `  [${id}] ${item.label} — ${fmt(item.cost)}\n`;
+      const owned = data.fightTrait === id;
+      msg += `  [${id}] ${item.label} — ${fmt(item.cost)}${owned ? " ✅" : ""}\n`;
     }
 
-    msg += `\n⚔️ 𝗦𝗣𝗘𝗖𝗜𝗔𝗟 𝗔𝗧𝗧𝗔𝗖𝗞𝗦 (𝗨𝗻𝗹𝗼𝗰𝗸𝗮𝗯𝗹𝗲 𝗺𝗼𝘃𝗲𝘀)\n`;
+    msg += `\n⚔️ 𝗦𝗣𝗘𝗖𝗜𝗔𝗟 𝗔𝗧𝗧𝗔𝗖𝗞𝗦 (Unlockable moves)\n`;
     for (const [id, item] of Object.entries(SHOP.specialAttacks)) {
-      msg += `  [${id}] ${item.label} — ${fmt(item.cost)}\n`;
+      const owned = (data.fightSkills || {})[id] >= 1;
+      msg += `  [${id}] ${item.label} — ${fmt(item.cost)}${owned ? " ✅" : ""}\n`;
     }
 
-    msg += `\n📈 𝗣𝗔𝗦𝗦𝗜𝗩𝗘 𝗨𝗣𝗚𝗥𝗔𝗗𝗘𝗦 (𝗣𝗲𝗿 𝗹𝗲𝘃𝗲𝗹, 𝗖𝗼𝘀𝘁 𝘀𝗰𝗮𝗹𝗲𝘀)\n`;
+    msg += `\n📈 𝗣𝗔𝗦𝗦𝗜𝗩𝗘 𝗨𝗣𝗚𝗥𝗔𝗗𝗘𝗦\n`;
     for (const [id, item] of Object.entries(SHOP.passives)) {
       if (item.type === "hpup") {
-        msg += `  [${id}] ${item.label} — ${fmt(item.cost)} per +50 HP (𝗻𝗼 𝗰𝗮𝗽)\n`;
+        const atCap = curBonus >= item.maxBonus;
+        msg +=
+          `  [${id}] ${item.label} — ${fmt(item.cost)} per +50 HP\n` +
+          `         ${curBonus}/${item.maxBonus} bonus HP  [${hpCapBar(curBonus, item.maxBonus)}]` +
+          (atCap ? " 🏆 MAXED" : "") + `\n`;
       } else {
-        msg += `  [${id}] ${item.label} — ${fmt(item.cost)}/𝗹𝘃𝗹 × 𝗹𝗲𝘃𝗲𝗹 (𝗺𝗮𝘅 ${item.maxLevel})\n`;
+        const curLvl = data[`${item.stat}Level`] || 0;
+        const maxed  = curLvl >= item.maxLevel;
+        msg +=
+          `  [${id}] ${item.label} — ${fmt(item.cost)}/lvl × level (max ${item.maxLevel})` +
+          (maxed ? " 🏆 MAXED" : ` — Lv.${curLvl}`) + `\n`;
       }
     }
 
-    msg += `\n💚 𝗜𝗡-𝗙𝗜𝗚𝗛𝗧 𝗔𝗕𝗜𝗟𝗜𝗧𝗜𝗘𝗦 (𝗨𝘀𝗲𝗮𝗯𝗹𝗲 𝗱𝘂𝗿𝗶𝗻𝗴 𝗯𝗮𝘁𝘁𝗹𝗲)\n`;
+    msg += `\n💚 𝗜𝗡-𝗙𝗜𝗚𝗛𝗧 𝗔𝗕𝗜𝗟𝗜𝗧𝗜𝗘𝗦\n`;
     for (const [id, item] of Object.entries(SHOP.abilities)) {
-      msg += `  [${id}] ${item.label} — ${fmt(item.cost)}\n`;
+      const owned = (data.fightAbilities || {})[id];
+      msg += `  [${id}] ${item.label} — ${fmt(item.cost)}${owned ? " ✅" : ""}\n`;
     }
 
     msg += `━━━━━━━━━━━━━━━━━━━━━━\n`;
-    msg += `🔍 +fightupgrade info [id] 𝗳𝗼𝗿 𝗱𝗲𝘁𝗮𝗶𝗹𝘀`;
+    msg += `🔍 +fightupgrade info [id] for details`;
     return message.send(msg);
   },
 };
+
+// ─── HP cap progress bar (reused in shop & buy response) ────────
+function hpCapBar(current, max, length = 10) {
+  const filled = Math.round((Math.min(current, max) / max) * length);
+  return "█".repeat(filled) + "░".repeat(length - filled);
+}

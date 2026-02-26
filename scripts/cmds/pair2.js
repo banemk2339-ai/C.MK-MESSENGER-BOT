@@ -1,4 +1,4 @@
-+cmd install pair4.js const { createCanvas, loadImage } = require('canvas');
+const { createCanvas, loadImage } = require('canvas');
 const fs = require('fs');
 const path = require("path");
 
