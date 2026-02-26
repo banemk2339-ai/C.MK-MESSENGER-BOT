@@ -110,7 +110,7 @@ module.exports = {
     aliases: ["fightshop", "fightbuy"],
     version: "1.0",
     author: "Charles MK",
-    countDown: 5,
+    countDown: 25,
     role: 0,
     shortDescription: { en: "⚔️ Purchase fight upgrades, traits & special moves" },
     category: "fun",
