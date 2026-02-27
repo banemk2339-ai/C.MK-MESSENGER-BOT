@@ -1,13 +1,13 @@
 const TIMEOUT_SECONDS = 120;
-const ongoingFights   = new Map();
-const gameInstances   = new Map();
+const ongoingFights     = new Map();
+const gameInstances     = new Map();
 const pendingChallenges = new Map();
 
 // ═══════════════════════════════════════════════════════════════
 //   HP BAR HELPER
 // ═══════════════════════════════════════════════════════════════
 function hpBar(current, max, length = 10) {
-  const ratio = Math.max(0, Math.min(1, current / max));
+  const ratio  = Math.max(0, Math.min(1, current / max));
   const filled = Math.round(ratio * length);
   const empty  = length - filled;
   const bar    = "█".repeat(filled) + "░".repeat(empty);
@@ -64,7 +64,7 @@ function getStats(userData) {
     trait:        d.fightTrait        || null,
     skills:       d.fightSkills       || {},
     trainedAt:    d.fightTrainedAt    || 0,
-    xp:           d.fightXP          || 0,
+    xp:           d.fightXP           || 0,
   };
 }
 
@@ -77,34 +77,43 @@ function calcLevel(stats) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//   POWER SCORE  — used for matchmaking fairness check
-//   Weights: each atk/def/agility level counts for 1 pt,
-//            every 50 bonus HP counts for 1 pt.
-//   Trait gives a small flat bonus so it's factored in too.
+//   POWER SCORE — matchmaking fairness
 // ═══════════════════════════════════════════════════════════════
 function calcPower(stats) {
-  const atkPts     = stats.atkBonus     / 5;   // +5 per upgrade level → 1 pt per level
+  const atkPts     = stats.atkBonus     / 5;
   const defPts     = stats.defBonus     / 5;
   const agiPts     = stats.agilityBonus / 5;
-  const hpPts      = stats.bonusHP      / 50;  // +50 HP per purchase → 1 pt per purchase
-  const traitBonus = stats.trait ? 15 : 0;     // flat 15 pts for having any trait
+  const hpPts      = stats.bonusHP      / 50;
+  const traitBonus = stats.trait ? 15 : 0;
   return atkPts + defPts + agiPts + hpPts + traitBonus;
 }
 
 const TRAITS = {
-  ironhide:   { label: "𝗜𝗿𝗼𝗻 𝗛𝗶𝗱𝗲",     desc: "Born with skin like steel — reduces all incoming damage by 18%.", defBonus: 18 },
-  shadowstep: { label: "𝗦𝗵𝗮𝗱𝗼𝘄 𝗦𝘁𝗲𝗽",   desc: "Phantom-like reflexes — +20% base dodge chance.",                agilityBonus: 20 },
-  berserker:  { label: "𝗕𝗲𝗿𝘀𝗲𝗿𝗸𝗲𝗿",     desc: "Rage fuels power — +12 flat bonus to every attack.",            atkBonus: 12 },
-  cursed:     { label: "𝗖𝘂𝗿𝘀𝗲𝗱 𝗙𝗶𝘀𝘁",   desc: "Attacks apply a curse, reducing opponent defense by 10%.",      debuff: 10 },
-  phoenix:    { label: "𝗣𝗵𝗼𝗲𝗻𝗶𝘅 𝗕𝗹𝗼𝗼𝗱", desc: "Once per fight, survive a lethal blow with 1 HP.",              revive: true },
+  ironhide:   { label: "𝗜𝗿𝗼𝗻 𝗛𝗶𝗱𝗲",     defBonus: 18 },
+  shadowstep: { label: "𝗦𝗵𝗮𝗱𝗼𝘄 𝗦𝘁𝗲𝗽",   agilityBonus: 20 },
+  berserker:  { label: "𝗕𝗲𝗿𝘀𝗲𝗿𝗸𝗲𝗿",     atkBonus: 12 },
+  cursed:     { label: "𝗖𝘂𝗿𝘀𝗲𝗱 𝗙𝗶𝘀𝘁",   debuff: 10 },
+  phoenix:    { label: "𝗣𝗵𝗼𝗲𝗻𝗶𝘅 𝗕𝗹𝗼𝗼𝗱", revive: true },
 };
+
+// ═══════════════════════════════════════════════════════════════
+//   FIX #1 — endFight is the SINGLE place that clears state.
+//   Both maps + timeout cleared atomically, every time.
+//   All code paths that end a fight call this before anything else.
+// ═══════════════════════════════════════════════════════════════
+function endFight(threadID) {
+  const inst = gameInstances.get(threadID);
+  if (inst?.timeoutID) clearTimeout(inst.timeoutID);
+  gameInstances.delete(threadID);
+  ongoingFights.delete(threadID);
+}
 
 // ═══════════════════════════════════════════════════════════════
 module.exports = {
   config: {
     name: "fight",
     aliases: ["battle", "duel"],
-    version: "3.1",
+    version: "3.2",
     author: "Charles MK",
     countDown: 10,
     role: 0,
@@ -174,18 +183,15 @@ module.exports = {
       const opponentName   = await usersData.getName(opponentID);
 
       // ── Power-gap matchmaking check ────────────────────
-      const cData   = await usersData.get(challengerID);
-      const oData   = await usersData.get(opponentID);
-      const cStats  = getStats(cData);
-      const oStats  = getStats(oData);
-      const cPower  = calcPower(cStats);
-      const oPower  = calcPower(oStats);
-
-      // Minimum power floor of 1 so division is safe for new players
+      const cData      = await usersData.get(challengerID);
+      const oData      = await usersData.get(opponentID);
+      const cStats     = getStats(cData);
+      const oStats     = getStats(oData);
+      const cPower     = calcPower(cStats);
+      const oPower     = calcPower(oStats);
       const cPowerSafe = Math.max(1, cPower);
       const oPowerSafe = Math.max(1, oPower);
 
-      // Block if challenger is more than 2× stronger than opponent
       if (cPowerSafe > oPowerSafe * 2) {
         const ratio = (cPowerSafe / oPowerSafe).toFixed(1);
         return message.send(
@@ -194,13 +200,9 @@ module.exports = {
           `❌ You cannot challenge ${opponentName}.\n\n` +
           `⚔️ Your power score is ${ratio}× theirs — that's too large a gap.\n` +
           `📊 You: ${Math.round(cPower)} pts  |  ${opponentName}: ${Math.round(oPower)} pts\n\n` +
-          `⚠️ You may only challenge players with at least half your power score.\n` +
           `💡 Find a more evenly matched opponent!`
         );
       }
-
-      // Block if opponent is more than 2× stronger than challenger
-      // (protects weaker players from being challenged by far stronger ones)
       if (oPowerSafe > cPowerSafe * 2) {
         const ratio = (oPowerSafe / cPowerSafe).toFixed(1);
         return message.send(
@@ -209,7 +211,6 @@ module.exports = {
           `❌ You cannot challenge ${opponentName}.\n\n` +
           `⚔️ ${opponentName}'s power score is ${ratio}× yours — that's too large a gap.\n` +
           `📊 You: ${Math.round(cPower)} pts  |  ${opponentName}: ${Math.round(oPower)} pts\n\n` +
-          `⚠️ You may only challenge players within 2× of your own power score.\n` +
           `💡 Upgrade your skills first, or find a more evenly matched opponent!`
         );
       }
@@ -329,6 +330,17 @@ module.exports = {
     const isP2 = senderID === fight.participants[1].id;
     if (!isP1 && !isP2) return;
 
+    // ── FIX #2 — forfeit checked BEFORE the turn gate.
+    //    Either player can forfeit at any time, even out of turn.
+    //    endFight() called first so the thread unblocks immediately.
+    if (input === "forfeit") {
+      const loser  = fight.participants.find(p => p.id === senderID);
+      const winner = fight.participants.find(p => p.id !== senderID);
+      endFight(threadID);
+      await this.handleFightEnd(message, usersData, fight, winner, loser, true);
+      return;
+    }
+
     if (senderID !== fight.currentPlayer) {
       if (!inst.turnMessageSent) {
         const curName = fight.participants.find(p => p.id === fight.currentPlayer).name;
@@ -338,14 +350,7 @@ module.exports = {
       return;
     }
 
-    if (input === "forfeit") {
-      const loser  = fight.participants.find(p => p.id === senderID);
-      const winner = fight.participants.find(p => p.id !== senderID);
-      await this.handleFightEnd(message, usersData, fight, winner, loser, true);
-      return endFight(threadID);
-    }
-
-    // ── Heal action ────────────────────────────────────────
+    // ── Heal ───────────────────────────────────────────────
     if (input === "heal") {
       const healerData  = await usersData.get(senderID);
       const healerStats = getStats(healerData);
@@ -357,7 +362,6 @@ module.exports = {
         );
 
       const healer = fight.participants.find(p => p.id === senderID);
-
       if (fight.healUsed?.[senderID])
         return message.send(`❌ You've already used heal this fight!\n` + hpLine(healer));
 
@@ -380,7 +384,7 @@ module.exports = {
         `⚠️ Heal can only be used once per fight!`
       );
 
-      fight.currentPlayer = defender.id;
+      fight.currentPlayer  = defender.id;
       inst.turnMessageSent = false;
       resetTimeout(threadID, message);
       return;
@@ -394,7 +398,7 @@ module.exports = {
     const defStats = getStats(defData);
     const move     = MOVES[input];
 
-    // ── Defense ───────────────────────────────────────────
+    // ── Defense ────────────────────────────────────────────
     if (move?.type === "defense") {
       let defMsg = "";
       if (input === "block") {
@@ -416,7 +420,7 @@ module.exports = {
         `${hpLine(attacker)}\n` +
         `${hpLine(defender)}`;
       await message.send(defMsg);
-      fight.currentPlayer = defender.id;
+      fight.currentPlayer  = defender.id;
       inst.turnMessageSent = false;
       resetTimeout(threadID, message);
       return;
@@ -440,10 +444,11 @@ module.exports = {
         `${hpLine(defender)}`
       );
       if (attacker.hp <= 0) {
+        endFight(threadID);
         await this.handleFightEnd(message, usersData, fight, defender, attacker, false);
-        return endFight(threadID);
+        return;
       }
-      fight.currentPlayer = defender.id;
+      fight.currentPlayer  = defender.id;
       inst.turnMessageSent = false;
       return resetTimeout(threadID, message);
     }
@@ -468,18 +473,18 @@ module.exports = {
     const isDodge = Math.random() < dodgeChance;
 
     if (isDodge) {
-      return message.send(
+      await message.send(
         `💨 𝗗𝗢𝗗𝗚𝗘𝗗!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
         `${move.emoji} ${attacker.name} used ${move.label}\n` +
         `🌪️ ${defender.name} evaded the attack!\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `${hpLine(attacker)}\n` +
         `${hpLine(defender)}`
-      ).then(() => {
-        fight.currentPlayer = defender.id;
-        inst.turnMessageSent = false;
-        resetTimeout(threadID, message);
-      });
+      );
+      fight.currentPlayer  = defender.id;
+      inst.turnMessageSent = false;
+      resetTimeout(threadID, message);
+      return;
     }
 
     if (isCrit) damage = Math.floor(damage * 1.5);
@@ -526,26 +531,27 @@ module.exports = {
     const atkHPLine = Math.max(0, attacker.hp) > 0 ? hpLine(attacker) : `💀 ${attacker.name}: K.O.`;
     const defHPLine = Math.max(0, defender.hp) > 0 ? hpLine(defender) : `💀 ${defender.name}: K.O.`;
 
-    const msgOut =
+    await message.send(
       header +
       statusLine +
       `${move.emoji} ${attacker.name} used ${move.label}\n` +
       `💥 ${defender.name} took ${damage} damage` + (isCrit ? " ⚡ CRIT!" : "") + `\n` +
       `━━━━━━━━━━━━━━━━━━━━━━\n` +
       `${atkHPLine}\n` +
-      `${defHPLine}`;
-
-    await message.send(msgOut);
+      `${defHPLine}`
+    );
 
     if (defender.hp <= 0) {
-      setTimeout(async () => {
-        await this.handleFightEnd(message, usersData, fight, attacker, defender, false);
-        endFight(threadID);
-      }, 1000);
+      // ── FIX #3 — endFight BEFORE handleFightEnd so the thread
+      //    is freed immediately, not after async DB writes finish.
+      //    No setTimeout: removing it also eliminates a race where
+      //    someone could start a new fight in that 1s window.
+      endFight(threadID);
+      await this.handleFightEnd(message, usersData, fight, attacker, defender, false);
       return;
     }
 
-    fight.currentPlayer = defender.id;
+    fight.currentPlayer  = defender.id;
     inst.turnMessageSent = false;
     resetTimeout(threadID, message);
   },
@@ -619,9 +625,9 @@ module.exports = {
     const wStats     = getStats(winnerData);
     const lStats     = getStats(loserData);
 
-    const xpGain  = forfeited ? 20 : 50;
-    const newXP   = (wStats.xp   || 0) + xpGain;
-    const newLvl  = calcLevel({ ...wStats, xp: newXP });
+    const xpGain    = forfeited ? 20 : 50;
+    const newXP     = (wStats.xp     || 0) + xpGain;
+    const newLvl    = calcLevel({ ...wStats, xp: newXP });
     const newWins   = (wStats.wins   || 0) + 1;
     const newLosses = (lStats.losses || 0) + 1;
 
@@ -631,7 +637,7 @@ module.exports = {
 
     await usersData.set(winner.id, {
       money: winnerData.money + winnings,
-      data: { ...winnerData.data, fightWins: newWins, fightXP: newXP, fightLevel: newLvl },
+      data:  { ...winnerData.data, fightWins: newWins, fightXP: newXP, fightLevel: newLvl },
     });
     await usersData.set(loser.id, {
       data: { ...loserData.data, fightLosses: newLosses },
@@ -660,33 +666,36 @@ function startTimeout(threadID, message) {
   const id = setTimeout(async () => {
     if (!gameInstances.has(threadID)) return;
     const { fight } = gameInstances.get(threadID);
+
+    // ── FIX #1 (part 2) — unblock the thread immediately before
+    //    any async work so no ghost-fight lingers during DB writes.
+    endFight(threadID);
+
     await message.send(
       `⏰ 𝗧𝗜𝗠𝗘𝗢𝗨𝗧!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
       `Fight cancelled due to inactivity.\n` +
       (fight.mode === "bet" ? "💰 Bets refunded." : "")
     );
+
     if (fight.mode === "bet") {
-      const ud = global.GoatBot.usersData;
-      const [d0, d1] = await Promise.all([
-        ud.get(fight.participants[0].id),
-        ud.get(fight.participants[1].id),
-      ]);
-      await ud.set(fight.participants[0].id, { money: d0.money + fight.challengerBet });
-      await ud.set(fight.participants[1].id, { money: d1.money + fight.opponentBet   });
+      try {
+        const ud = global.GoatBot.usersData;
+        const [d0, d1] = await Promise.all([
+          ud.get(fight.participants[0].id),
+          ud.get(fight.participants[1].id),
+        ]);
+        await ud.set(fight.participants[0].id, { money: d0.money + fight.challengerBet });
+        await ud.set(fight.participants[1].id, { money: d1.money + fight.opponentBet   });
+      } catch (e) {
+        console.error("[fight] Timeout refund error:", e);
+      }
     }
-    endFight(threadID);
   }, TIMEOUT_SECONDS * 1000);
+
   gameInstances.get(threadID).timeoutID = id;
 }
 
 function resetTimeout(threadID, message) {
   const inst = gameInstances.get(threadID);
   if (inst?.timeoutID) { clearTimeout(inst.timeoutID); startTimeout(threadID, message); }
-}
-
-function endFight(threadID) {
-  const inst = gameInstances.get(threadID);
-  if (inst?.timeoutID) clearTimeout(inst.timeoutID);
-  ongoingFights.delete(threadID);
-  gameInstances.delete(threadID);
 }
