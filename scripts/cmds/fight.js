@@ -16,9 +16,9 @@ function hpBar(current, max, length = 10) {
 }
 
 function hpLine(participant) {
-  const hp     = Math.max(0, participant.hp);
-  const maxHP  = participant.maxHP;
-  const icon   = hp > maxHP * 0.5 ? "💚" : hp > maxHP * 0.25 ? "💛" : "❤️";
+  const hp    = Math.max(0, participant.hp);
+  const maxHP = participant.maxHP;
+  const icon  = hp > maxHP * 0.5 ? "💚" : hp > maxHP * 0.25 ? "💛" : "❤️";
   return `${icon} ${participant.name}: ${hp}/${maxHP} HP  ${hpBar(hp, maxHP)}`;
 }
 
@@ -26,25 +26,21 @@ function hpLine(participant) {
 //   MOVES DATABASE
 // ═══════════════════════════════════════════════════════════════
 const MOVES = {
-  // ─── Basic Attacks ─────────────────────────────────────────
   punch:     { min: 5,  max: 15,  emoji: "👊", type: "basic",   label: "punch"      },
   kick:      { min: 10, max: 20,  emoji: "🦵", type: "basic",   label: "kick"       },
   slap:      { min: 1,  max: 5,   emoji: "✋", type: "basic",   label: "slap"       },
   headbutt:  { min: 15, max: 25,  emoji: "🗿", type: "basic",   label: "headbutt"   },
   elbow:     { min: 8,  max: 18,  emoji: "💪", type: "basic",   label: "elbow"      },
   uppercut:  { min: 12, max: 22,  emoji: "🥊", type: "basic",   label: "uppercut"   },
-  // ─── Power Attacks ─────────────────────────────────────────
   backslash: { min: 20, max: 35,  emoji: "⚡", type: "power",   label: "backslash"  },
   dropkick:  { min: 18, max: 30,  emoji: "🌀", type: "power",   label: "dropkick"   },
   suplex:    { min: 22, max: 38,  emoji: "🤼", type: "power",   label: "suplex"     },
   haymaker:  { min: 25, max: 40,  emoji: "💢", type: "power",   label: "haymaker"   },
   stomp:     { min: 14, max: 28,  emoji: "👟", type: "power",   label: "stomp"      },
-  // ─── Special Attacks (require unlocks via +fight upgrade) ──
   deathblow: { min: 35, max: 55,  emoji: "💀", type: "special", label: "deathblow", requires: "deathblow" },
   sonicfist: { min: 30, max: 50,  emoji: "🌪️", type: "special", label: "sonicfist", requires: "sonicfist" },
   shockwave: { min: 28, max: 45,  emoji: "⚡", type: "special", label: "shockwave",  requires: "shockwave" },
   blazekick: { min: 32, max: 52,  emoji: "🔥", type: "special", label: "blazekick", requires: "blazekick" },
-  // ─── Defense Actions ───────────────────────────────────────
   block:     { type: "defense", emoji: "🛡️", label: "block"   },
   parry:     { type: "defense", emoji: "⚔️",  label: "parry"   },
   counter:   { type: "defense", emoji: "🔄",  label: "counter" },
@@ -80,6 +76,21 @@ function calcLevel(stats) {
   return lvl;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//   POWER SCORE  — used for matchmaking fairness check
+//   Weights: each atk/def/agility level counts for 1 pt,
+//            every 50 bonus HP counts for 1 pt.
+//   Trait gives a small flat bonus so it's factored in too.
+// ═══════════════════════════════════════════════════════════════
+function calcPower(stats) {
+  const atkPts     = stats.atkBonus     / 5;   // +5 per upgrade level → 1 pt per level
+  const defPts     = stats.defBonus     / 5;
+  const agiPts     = stats.agilityBonus / 5;
+  const hpPts      = stats.bonusHP      / 50;  // +50 HP per purchase → 1 pt per purchase
+  const traitBonus = stats.trait ? 15 : 0;     // flat 15 pts for having any trait
+  return atkPts + defPts + agiPts + hpPts + traitBonus;
+}
+
 const TRAITS = {
   ironhide:   { label: "𝗜𝗿𝗼𝗻 𝗛𝗶𝗱𝗲",     desc: "Born with skin like steel — reduces all incoming damage by 18%.", defBonus: 18 },
   shadowstep: { label: "𝗦𝗵𝗮𝗱𝗼𝘄 𝗦𝘁𝗲𝗽",   desc: "Phantom-like reflexes — +20% base dodge chance.",                agilityBonus: 20 },
@@ -93,7 +104,7 @@ module.exports = {
   config: {
     name: "fight",
     aliases: ["battle", "duel"],
-    version: "3.0",
+    version: "3.1",
     author: "Charles MK",
     countDown: 10,
     role: 0,
@@ -162,6 +173,47 @@ module.exports = {
       const challengerName = await usersData.getName(challengerID);
       const opponentName   = await usersData.getName(opponentID);
 
+      // ── Power-gap matchmaking check ────────────────────
+      const cData   = await usersData.get(challengerID);
+      const oData   = await usersData.get(opponentID);
+      const cStats  = getStats(cData);
+      const oStats  = getStats(oData);
+      const cPower  = calcPower(cStats);
+      const oPower  = calcPower(oStats);
+
+      // Minimum power floor of 1 so division is safe for new players
+      const cPowerSafe = Math.max(1, cPower);
+      const oPowerSafe = Math.max(1, oPower);
+
+      // Block if challenger is more than 2× stronger than opponent
+      if (cPowerSafe > oPowerSafe * 2) {
+        const ratio = (cPowerSafe / oPowerSafe).toFixed(1);
+        return message.send(
+          `⚖️ 𝗠𝗔𝗧𝗖𝗛𝗠𝗔𝗞𝗜𝗡𝗚 𝗕𝗟𝗢𝗖𝗞𝗘𝗗\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `❌ You cannot challenge ${opponentName}.\n\n` +
+          `⚔️ Your power score is ${ratio}× theirs — that's too large a gap.\n` +
+          `📊 You: ${Math.round(cPower)} pts  |  ${opponentName}: ${Math.round(oPower)} pts\n\n` +
+          `⚠️ You may only challenge players with at least half your power score.\n` +
+          `💡 Find a more evenly matched opponent!`
+        );
+      }
+
+      // Block if opponent is more than 2× stronger than challenger
+      // (protects weaker players from being challenged by far stronger ones)
+      if (oPowerSafe > cPowerSafe * 2) {
+        const ratio = (oPowerSafe / cPowerSafe).toFixed(1);
+        return message.send(
+          `⚖️ 𝗠𝗔𝗧𝗖𝗛𝗠𝗔𝗞𝗜𝗡𝗚 𝗕𝗟𝗢𝗖𝗞𝗘𝗗\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `❌ You cannot challenge ${opponentName}.\n\n` +
+          `⚔️ ${opponentName}'s power score is ${ratio}× yours — that's too large a gap.\n` +
+          `📊 You: ${Math.round(cPower)} pts  |  ${opponentName}: ${Math.round(oPower)} pts\n\n` +
+          `⚠️ You may only challenge players within 2× of your own power score.\n` +
+          `💡 Upgrade your skills first, or find a more evenly matched opponent!`
+        );
+      }
+
       const key = `${threadID}_${challengerID}`;
       pendingChallenges.set(key, {
         challengerID, challengerName, opponentID, opponentName,
@@ -171,7 +223,8 @@ module.exports = {
       await message.send(
         `🤺 𝗙𝗜𝗚𝗛𝗧 𝗖𝗛𝗔𝗟𝗟𝗘𝗡𝗚𝗘!\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `👤 ${challengerName} challenges ${opponentName}!\n\n` +
+        `👤 ${challengerName} challenges ${opponentName}!\n` +
+        `📊 Power: ${Math.round(cPower)} vs ${Math.round(oPower)}\n\n` +
         `Choose mode:\n` +
         `  💰 Type "bet"      — Fight with money on the line\n` +
         `  🤝 Type "friendly" — Friendly match ($50M prize)\n\n` +
@@ -192,13 +245,13 @@ module.exports = {
 
   // ───────────────────────────────────────────────────────────
   onChat: async function ({ event, message, usersData }) {
-    const threadID  = event.threadID;
-    const senderID  = event.senderID;
-    const input     = event.body.trim().toLowerCase();
+    const threadID = event.threadID;
+    const senderID = event.senderID;
+    const input    = event.body.trim().toLowerCase();
 
     // ── Pending challenge flow ─────────────────────────────
-    const cKey      = `${threadID}_${senderID}`;
-    const pending   = pendingChallenges.get(cKey);
+    const cKey    = `${threadID}_${senderID}`;
+    const pending = pendingChallenges.get(cKey);
 
     if (pending) {
       const { challengerID, challengerName, opponentID, opponentName, step } = pending;
@@ -292,7 +345,7 @@ module.exports = {
       return endFight(threadID);
     }
 
-    // ── Heal action ───────────────────────────────────────
+    // ── Heal action ────────────────────────────────────────
     if (input === "heal") {
       const healerData  = await usersData.get(senderID);
       const healerStats = getStats(healerData);
@@ -306,10 +359,7 @@ module.exports = {
       const healer = fight.participants.find(p => p.id === senderID);
 
       if (fight.healUsed?.[senderID])
-        return message.send(
-          `❌ You've already used heal this fight!\n` +
-          hpLine(healer)
-        );
+        return message.send(`❌ You've already used heal this fight!\n` + hpLine(healer));
 
       fight.healUsed = fight.healUsed || {};
       fight.healUsed[senderID] = true;
@@ -318,7 +368,6 @@ module.exports = {
       const oldHP    = healer.hp;
       healer.hp      = Math.min(healer.maxHP, healer.hp + healAmt);
       const restored = healer.hp - oldHP;
-
       const defender = fight.participants.find(p => p.id !== senderID);
 
       await message.send(
@@ -373,11 +422,10 @@ module.exports = {
       return;
     }
 
-    if (!move || !["basic","power","special"].includes(move.type)) return;
+    if (!move || !["basic", "power", "special"].includes(move.type)) return;
 
-    // Special move lock check
     if (move.requires && !(atkStats.skills[move.requires] >= 1))
-      return message.send(`🔒 "${input}" requires the "${move.requires}" upgrade.\nUse +fight upgrade to unlock.`);
+      return message.send(`🔒 "${input}" requires the "${move.requires}" upgrade.\nUse +fightupgrade to unlock.`);
 
     // Counter stance triggers
     if (fight.counterActive?.id === defender.id) {
@@ -400,7 +448,7 @@ module.exports = {
       return resetTimeout(threadID, message);
     }
 
-    // ── Calculate damage ────────────────────────────────
+    // ── Calculate damage ───────────────────────────────────
     let damage = Math.floor(Math.random() * (move.max - move.min + 1)) + move.min;
     damage += atkStats.atkBonus;
     if (atkStats.skills[input]) damage += atkStats.skills[input] * 3;
@@ -475,13 +523,8 @@ module.exports = {
       ? `💥 𝗖𝗥𝗜𝗧𝗜𝗖𝗔𝗟 𝗛𝗜𝗧!\n━━━━━━━━━━━━━━━━━━━━━━\n`
       : `⚔️ 𝗔𝗧𝗧𝗔𝗖𝗞!\n━━━━━━━━━━━━━━━━━━━━━━\n`;
 
-    // ── Build attacker's current HP line (accounting for parry reflect)
-    const atkHPLine = Math.max(0, attacker.hp) > 0
-      ? hpLine(attacker)
-      : `💀 ${attacker.name}: K.O.`;
-    const defHPLine = Math.max(0, defender.hp) > 0
-      ? hpLine(defender)
-      : `💀 ${defender.name}: K.O.`;
+    const atkHPLine = Math.max(0, attacker.hp) > 0 ? hpLine(attacker) : `💀 ${attacker.name}: K.O.`;
+    const defHPLine = Math.max(0, defender.hp) > 0 ? hpLine(defender) : `💀 ${defender.name}: K.O.`;
 
     const msgOut =
       header +
@@ -509,7 +552,10 @@ module.exports = {
 
   // ───────────────────────────────────────────────────────────
   startFight: async function (message, usersData, fightData) {
-    const { challengerID, challengerName, opponentID, opponentName, threadID, mode, challengerBet, opponentBet } = fightData;
+    const {
+      challengerID, challengerName, opponentID, opponentName,
+      threadID, mode, challengerBet, opponentBet,
+    } = fightData;
 
     const cData  = await usersData.get(challengerID);
     const oData  = await usersData.get(opponentID);
@@ -532,7 +578,7 @@ module.exports = {
     gameInstances.set(threadID, { fight, timeoutID: null, turnMessageSent: false });
     ongoingFights.set(threadID, fight);
 
-    const first = fight.currentPlayer === challengerID ? challengerName : opponentName;
+    const first    = fight.currentPlayer === challengerID ? challengerName : opponentName;
     const modeText = mode === "bet"
       ? `💰 𝗕𝗘𝗧 𝗠𝗔𝗧𝗖𝗛\n   ${challengerName}: $${challengerBet.toLocaleString()}\n   ${opponentName}: $${opponentBet.toLocaleString()}\n   🏆 Pool: $${(challengerBet + opponentBet).toLocaleString()}`
       : `🤝 𝗙𝗥𝗜𝗘𝗡𝗗𝗟𝗬 𝗠𝗔𝗧𝗖𝗛\n   🏆 Prize: $50,000,000`;
@@ -573,9 +619,9 @@ module.exports = {
     const wStats     = getStats(winnerData);
     const lStats     = getStats(loserData);
 
-    const xpGain = forfeited ? 20 : 50;
-    const newXP  = (wStats.xp  || 0) + xpGain;
-    const newLvl = calcLevel({ ...wStats, xp: newXP });
+    const xpGain  = forfeited ? 20 : 50;
+    const newXP   = (wStats.xp   || 0) + xpGain;
+    const newLvl  = calcLevel({ ...wStats, xp: newXP });
     const newWins   = (wStats.wins   || 0) + 1;
     const newLosses = (lStats.losses || 0) + 1;
 

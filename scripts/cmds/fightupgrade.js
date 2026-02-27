@@ -57,28 +57,33 @@ const SHOP = {
     },
   },
 
-  // ── Passive Upgrades (stackable per level) ──────────────────
+  // ── Passive Upgrades ────────────────────────────────────────
+  // maxLevel raised from 10 → 100.
+  // Existing Lv.10 owners are unaffected — they simply continue from Lv.11.
   passives: {
     atkup: {
-      label: "𝗔𝘁𝘁𝗮𝗰𝗸 𝗕𝗼𝗼𝘀𝘁", cost: 5_000_000_000,
-      desc:  "+5 flat damage per level (max 10 levels).",
-      maxLevel: 10, type: "passive", stat: "fightAtkBonus", gain: 5,
+      label:    "𝗔𝘁𝘁𝗮𝗰𝗸 𝗕𝗼𝗼𝘀𝘁",
+      cost:     5_000_000_000,
+      desc:     "+5 flat damage per level (max 100 levels).",
+      maxLevel: 100, type: "passive", stat: "fightAtkBonus", gain: 5,
     },
     defup: {
-      label: "𝗗𝗲𝗳𝗲𝗻𝘀𝗲 𝗕𝗼𝗼𝘀𝘁", cost: 5_000_000_000,
-      desc:  "+5% damage reduction per level (max 10 levels, cap 50%).",
-      maxLevel: 10, type: "passive", stat: "fightDefBonus", gain: 5,
+      label:    "𝗗𝗲𝗳𝗲𝗻𝘀𝗲 𝗕𝗼𝗼𝘀𝘁",
+      cost:     5_000_000_000,
+      desc:     "+5% damage reduction per level (max 100 levels, soft-cap applies in combat).",
+      maxLevel: 100, type: "passive", stat: "fightDefBonus", gain: 5,
     },
     agilityup: {
-      label: "𝗔𝗴𝗶𝗹𝗶𝘁𝘆 𝗕𝗼𝗼𝘀𝘁", cost: 5_000_000_000,
-      desc:  "+5% dodge chance per level (max 10 levels, cap 50%).",
-      maxLevel: 10, type: "passive", stat: "fightAgilityBonus", gain: 5,
+      label:    "𝗔𝗴𝗶𝗹𝗶𝘁𝘆 𝗕𝗼𝗼𝘀𝘁",
+      cost:     5_000_000_000,
+      desc:     "+5% dodge chance per level (max 100 levels, soft-cap applies in combat).",
+      maxLevel: 100, type: "passive", stat: "fightAgilityBonus", gain: 5,
     },
     hpup: {
       label:    "𝗛𝗲𝗮𝗹𝘁𝗵 𝗕𝗼𝗼𝘀𝘁",
       cost:     5_000_000,
-      desc:     "+50 max HP per purchase (limit: 5,000 bonus HP / 5,100 total HP).",
-      maxBonus: 5000,   // hard cap on fightBonusHP
+      desc:     "+50 max HP per purchase (hard limit: 5,000 bonus HP / 5,100 total HP).",
+      maxBonus: 5000,
       type:     "hpup",
     },
   },
@@ -103,12 +108,17 @@ const ALL_ITEMS = {
 
 function fmt(n) { return `$${BigInt(Math.round(n)).toLocaleString()}`; }
 
+function hpCapBar(current, max, length = 10) {
+  const filled = Math.round((Math.min(current, max) / max) * length);
+  return "█".repeat(filled) + "░".repeat(length - filled);
+}
+
 // ═══════════════════════════════════════════════════════════════
 module.exports = {
   config: {
     name: "fightupgrade",
     aliases: ["fightshop", "fightbuy"],
-    version: "1.0",
+    version: "1.1",
     author: "Charles MK",
     countDown: 25,
     role: 0,
@@ -124,7 +134,7 @@ module.exports = {
 
   onStart: async function ({ event, message, usersData, args }) {
     const senderID = event.senderID;
-    const sub = args[0]?.toLowerCase();
+    const sub      = args[0]?.toLowerCase();
 
     // ── Info ───────────────────────────────────────────────
     if (sub === "info" && args[1]) {
@@ -163,7 +173,7 @@ module.exports = {
 
         await usersData.set(senderID, {
           money: userData.money - item.cost,
-          data: { ...data, fightTrait: id },
+          data:  { ...data, fightTrait: id },
         });
         return message.send(
           `✅ 𝗧𝗿𝗮𝗶𝘁 𝗨𝗻𝗹𝗼𝗰𝗸𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -174,7 +184,7 @@ module.exports = {
         );
       }
 
-      // ── Skill ────────────────────────────────────────────
+      // ── Skill unlock ─────────────────────────────────────
       if (item.type === "skill") {
         const skills = data.fightSkills || {};
         if (skills[id] >= 1)
@@ -185,7 +195,7 @@ module.exports = {
         skills[id] = 1;
         await usersData.set(senderID, {
           money: userData.money - item.cost,
-          data: { ...data, fightSkills: skills },
+          data:  { ...data, fightSkills: skills },
         });
         return message.send(
           `✅ 𝗦𝗸𝗶𝗹𝗹 𝗨𝗻𝗹𝗼𝗰𝗸𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -196,7 +206,7 @@ module.exports = {
         );
       }
 
-      // ── Passive ──────────────────────────────────────────
+      // ── Passive upgrade ───────────────────────────────────
       if (item.type === "passive") {
         const curLevel = data[`${item.stat}Level`] || 0;
         if (curLevel >= item.maxLevel)
@@ -204,7 +214,11 @@ module.exports = {
 
         const scaledCost = item.cost * (curLevel + 1);
         if (userData.money < scaledCost)
-          return message.send(`❌ Insufficient funds!\n💵 Balance: ${fmt(userData.money)}\n💸 Need: ${fmt(scaledCost)} (Lv.${curLevel + 1})`);
+          return message.send(
+            `❌ Insufficient funds!\n` +
+            `💵 Balance: ${fmt(userData.money)}\n` +
+            `💸 Need: ${fmt(scaledCost)} (Lv.${curLevel + 1})`
+          );
 
         const newLevel   = curLevel + 1;
         const newStatVal = (data[item.stat] || 0) + item.gain;
@@ -219,7 +233,7 @@ module.exports = {
         });
         return message.send(
           `✅ 𝗨𝗽𝗴𝗿𝗮𝗱𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `📈 ${item.label} → Lv.${newLevel}\n` +
+          `📈 ${item.label} → Lv.${newLevel} / ${item.maxLevel}\n` +
           `💪 +${item.gain} applied (Total: ${newStatVal})\n` +
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
           `💰 Remaining: ${fmt(userData.money - scaledCost)}\n` +
@@ -229,19 +243,15 @@ module.exports = {
         );
       }
 
-      // ── HP Upgrade ───────────────────────────────────────
+      // ── HP upgrade ────────────────────────────────────────
       if (item.type === "hpup") {
         const curBonus = data.fightBonusHP || 0;
 
-        // Hard cap check
         if (curBonus >= item.maxBonus)
           return message.send(
             `❌ 𝗛𝗣 𝗖𝗮𝗽 𝗥𝗲𝗮𝗰𝗵𝗲𝗱!\n` +
             `━━━━━━━━━━━━━━━━━━━━━━\n` +
-            `❤️ Your bonus HP is already at the maximum:\n` +
-            `   ${curBonus} / ${item.maxBonus} bonus HP\n` +
-            `   (${100 + curBonus} total max HP)\n` +
-            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `❤️ Bonus HP: ${curBonus} / ${item.maxBonus} (${100 + curBonus} total)\n` +
             `You cannot purchase any more HP upgrades.`
           );
 
@@ -254,7 +264,7 @@ module.exports = {
 
         await usersData.set(senderID, {
           money: newMoney,
-          data: { ...data, fightBonusHP: newBonus },
+          data:  { ...data, fightBonusHP: newBonus },
         });
         return message.send(
           `✅ 𝗛𝗲𝗮𝗹𝘁𝗵 𝗨𝗽𝗴𝗿𝗮𝗱𝗲𝗱!\n` +
@@ -266,12 +276,12 @@ module.exports = {
           `━━━━━━━━━━━━━━━━━━━━━━\n` +
           `💰 Remaining: ${fmt(newMoney)}\n` +
           (atCap
-            ? `🏆 MAX HP REACHED! You cannot buy more HP upgrades.`
-            : `🔼 Buy again for another +50 HP (${item.maxBonus - newBonus} HP remaining until cap)`)
+            ? `🏆 MAX HP REACHED!`
+            : `🔼 Buy again for another +50 HP (${item.maxBonus - newBonus} remaining until cap)`)
         );
       }
 
-      // ── Ability ──────────────────────────────────────────
+      // ── Ability unlock ────────────────────────────────────
       if (item.type === "ability") {
         const abilities = data.fightAbilities || {};
         if (abilities[id])
@@ -282,7 +292,7 @@ module.exports = {
         abilities[id] = true;
         await usersData.set(senderID, {
           money: userData.money - item.cost,
-          data: { ...data, fightAbilities: abilities },
+          data:  { ...data, fightAbilities: abilities },
         });
         return message.send(
           `✅ 𝗔𝗯𝗶𝗹𝗶𝘁𝘆 𝗨𝗻𝗹𝗼𝗰𝗸𝗲𝗱!\n━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -300,7 +310,6 @@ module.exports = {
     const userData = await usersData.get(senderID);
     const data     = userData?.data || {};
     const curBonus = data.fightBonusHP || 0;
-    const hpItem   = SHOP.passives.hpup;
 
     let msg =
       `🛒 𝗙𝗜𝗚𝗛𝗧 𝗦𝗛𝗢𝗣\n` +
@@ -330,9 +339,11 @@ module.exports = {
       } else {
         const curLvl = data[`${item.stat}Level`] || 0;
         const maxed  = curLvl >= item.maxLevel;
+        const nextCost = !maxed ? fmt(item.cost * (curLvl + 1)) : null;
         msg +=
-          `  [${id}] ${item.label} — ${fmt(item.cost)}/lvl × level (max ${item.maxLevel})` +
-          (maxed ? " 🏆 MAXED" : ` — Lv.${curLvl}`) + `\n`;
+          `  [${id}] ${item.label} — ${fmt(item.cost)}/lvl × level (max ${item.maxLevel})\n` +
+          `         Lv.${curLvl}/${item.maxLevel}` +
+          (maxed ? " 🏆 MAXED" : `  Next: ${nextCost}`) + `\n`;
       }
     }
 
@@ -347,9 +358,3 @@ module.exports = {
     return message.send(msg);
   },
 };
-
-// ─── HP cap progress bar (reused in shop & buy response) ────────
-function hpCapBar(current, max, length = 10) {
-  const filled = Math.round((Math.min(current, max) / max) * length);
-  return "█".repeat(filled) + "░".repeat(length - filled);
-}

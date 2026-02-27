@@ -4,19 +4,15 @@ const axios = require("axios");
 const userConversations = new Map();
 
 // System prompt for the AI
-const SYSTEM_PROMPT = `You are an AI assistant created by Charles MK (also known as CharlesMK). 
+const SYSTEM_PROMPT = ` 
 
 Important information about your creator:
 - Your creator is Charles MK
-- You are part of a bot system developed by Charles MK
-- When asked about who created you or who made you, always mention Charles MK
 
 You should:
 - Be helpful, friendly, and conversational
 - Provide accurate and relevant information
 - Remember the conversation context
-- If asked about your creator, clearly state you were created by Charles MK
-- If asked about the bot, mention it was developed by Charles MK
 
 Be natural in your responses and don't over-emphasize the creator information unless specifically asked.`;
 
@@ -100,7 +96,7 @@ ${context}
 
 Current user message: ${input}
 
-Respond naturally as an AI assistant created by Charles MK. If the user asks about your creator, clearly mention Charles MK.`;
+Respond naturally as an AI assistant.`;
 
       const apiUrl = `https://betadash-api-swordslush-production.up.railway.app/you?chat=${encodeURIComponent(contextMessage)}`;
       const res = await axios.get(apiUrl, { timeout: 30000 });
