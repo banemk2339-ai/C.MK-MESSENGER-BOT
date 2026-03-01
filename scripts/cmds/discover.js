@@ -37,8 +37,8 @@ const DISCOVERY_RESOURCES = {
 
 module.exports = {
   config: {
-    name: "discover",
-    aliases: ["explore", "search", "find"],
+    name: "discovermine",
+    aliases: ["exploremine", "searchmine"],
     version: "1.0",
     author: "CharlesMK",
     countDown: 10,
