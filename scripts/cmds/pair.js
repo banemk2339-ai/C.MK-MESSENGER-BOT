@@ -8,7 +8,7 @@ module.exports = {
         name: "pair",
         author: "Charles MK",
         version: "1.2",
-        countDown: 7,
+        countDown: 12,
         role: 0,
         category: "fun",
         guide: {
