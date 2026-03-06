@@ -4,7 +4,7 @@ module.exports = {
   config: {
     name: "quiz",
     aliases: ["q", "trivia"],
-    version: "4.0.0",
+    version: "4.1.0",
     author: "Charles MK",
     countDown: 5,
     role: 0,
@@ -19,215 +19,249 @@ module.exports = {
       "information technology": 18, "gaming": 15, "anime": 31,
       "history": 23, "movies": 11, "music": 12
     };
-
     const input = args.join(" ").toLowerCase();
     const categoryId = categoryMap[input] || 9;
-
     const stats = { total: 0, correct: 0, incorrect: 0, sessionPoints: 0, streak: 0 };
-
     return this.getNextQuestion(message, event, categoryId, stats);
   },
 
   onReply: async function({ Reply, message, event, args, usersData, api }) {
-    const { author, type, quizData, quizMessageID, categoryId, stats, threadID } = Reply;
+    const { author, type, quizData, quizMessageID, categoryId, stats } = Reply;
     if (author !== event.senderID) return;
 
     const userInput = args.join(" ").trim();
     const userInputLower = userInput.toLowerCase();
+    const self = this;
 
-    // Handle STOP command FIRST - delete reply entry immediately
+    // ── STOP command ─────────────────────────────────────────
     if (["stop", "end", "quit"].includes(userInputLower)) {
-      global.GoatBot.onReply.delete(quizMessageID); // Delete FIRST
-      
+      global.GoatBot.onReply.delete(quizMessageID);
       const accuracy = stats.total > 0 ? ((stats.correct / stats.total) * 100).toFixed(1) : 0;
       message.unsend(quizMessageID).catch(() => {});
-
-      return message.reply(`🏁 𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗡𝗗𝗘𝗗\n━━━━━━━━━━━━━━━━━━━━━━\n📝 𝗧𝗼𝘁𝗮𝗹: ${stats.total}\n✅ 𝗖𝗼𝗿𝗿𝗲𝗰𝘁: ${stats.correct}\n🎯 𝗔𝗰𝗰𝘂𝗿𝗮𝗰𝘆: ${accuracy}%\n✨ 𝗦𝗲𝘀𝘀𝗶𝗼𝗻 𝗣𝘁𝘀: +${stats.sessionPoints}\n━━━━━━━━━━━━━━━━━━━━━━`);
+      return message.reply(
+        `🏁 𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗡𝗗𝗘𝗗\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📝 𝗧𝗼𝘁𝗮𝗹: ${stats.total}\n` +
+        `✅ 𝗖𝗼𝗿𝗿𝗲𝗰𝘁: ${stats.correct}\n` +
+        `🎯 𝗔𝗰𝗰𝘂𝗿𝗮𝗰𝘆: ${accuracy}%\n` +
+        `✨ 𝗦𝗲𝘀𝘀𝗶𝗼𝗻 𝗣𝘁𝘀: +${stats.sessionPoints}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━`
+      );
     }
 
-    // 🚨 ANTI-CHEAT DETECTION 🚨
+    // ── Anti-cheat ────────────────────────────────────────────
     const aiPatterns = [
-      '@meta', '@ai', '@gpt', '@chatgpt', '@claude', '@gemini', 
+      '@meta', '@ai', '@gpt', '@chatgpt', '@claude', '@gemini',
       '@copilot', '@bard', '/meta', '/ai', 'hey meta', 'meta ai',
       '@bing', '@perplexity', 'hey google', '@assistant'
     ];
-
-    const isCheating = aiPatterns.some(pattern => userInputLower.includes(pattern));
-
-    if (isCheating) {
-      global.GoatBot.onReply.delete(quizMessageID); // Delete entry
-      
+    if (aiPatterns.some(p => userInputLower.includes(p))) {
+      global.GoatBot.onReply.delete(quizMessageID);
+      message.unsend(quizMessageID).catch(() => {});
       const currentUser = await usersData.get(event.senderID);
-      
-      const expPenalty = 500;
-      const moneyPenalty = 50000;
-      
-      const newExp = Math.max(0, (currentUser.exp || 0) - expPenalty);
-      const newMoney = Math.max(0, (currentUser.money || 0) - moneyPenalty);
-      
       await usersData.set(event.senderID, {
-        exp: newExp,
-        money: newMoney,
+        ...currentUser,
+        exp: Math.max(0, (currentUser.exp || 0) - 500),
+        money: Math.max(0, (currentUser.money || 0) - 50000),
         data: {
           ...currentUser.data,
-          cheaterFlag: (currentUser.data.cheaterFlag || 0) + 1,
+          cheaterFlag: (currentUser.data?.cheaterFlag || 0) + 1,
           lastCheatTime: Date.now()
         }
       });
-
-      message.unsend(quizMessageID).catch(() => {});
-      
       return message.reply(
         `🚨 𝗖𝗛𝗘𝗔𝗧 𝗗𝗘𝗧𝗘𝗖𝗧𝗘𝗗! 🚨\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `Using AI assistance is prohibited!\n\n` +
         `⚠️ 𝗣𝗘𝗡𝗔𝗟𝗧𝗜𝗘𝗦:\n` +
-        `❌ -${expPenalty} EXP\n` +
-        `❌ -$${moneyPenalty.toLocaleString()}\n` +
-        `🚫 Strike: ${currentUser.data.cheaterFlag || 1}\n\n` +
+        `❌ -500 EXP\n` +
+        `❌ -$50,000\n` +
+        `🚫 Strike: ${(currentUser.data?.cheaterFlag || 0) + 1}\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `Play fair or don't play at all! 💪`
       );
     }
 
-    if (type === "answerQuiz") {
-      const answer = userInputLower.toUpperCase();
-      if (!['A', 'B', 'C', 'D'].includes(answer)) return;
+    if (type !== "answerQuiz") return;
 
-      // Check if already answered (timeout occurred)
-      if (!global.GoatBot.onReply.has(quizMessageID)) {
-        return; // Already timed out
-      }
+    const answer = userInputLower.toUpperCase();
+    if (!['A', 'B', 'C', 'D'].includes(answer)) return;
 
-      // Delete reply entry before processing
-      global.GoatBot.onReply.delete(quizMessageID);
+    // ── Race condition fix: atomic check-and-delete ───────────
+    // If timeout already fired and deleted the entry, this is a
+    // truly late answer — acknowledge it gracefully instead of silence
+    if (!global.GoatBot.onReply.has(quizMessageID)) {
+      return message.reply(`⏰ Too late! The time limit already passed for that question.`);
+    }
 
-      stats.total++;
-      const isCorrect = answer === quizData.correctLetter;
-      const currentUser = await usersData.get(event.senderID);
+    // Entry still exists — claim it immediately to prevent timeout race
+    global.GoatBot.onReply.delete(quizMessageID);
+
+    // ── Process answer ────────────────────────────────────────
+    stats.total++;
+    const isCorrect = answer === quizData.correctLetter;
+    const currentUser = await usersData.get(event.senderID);
+
+    if (isCorrect) {
+      stats.correct++;
+      stats.streak++;
 
       let pointGain = 10;
       let coinGain = Math.floor(Math.random() * 501) + 500;
 
-      if (isCorrect) {
-        stats.correct++;
-        stats.streak++;
-
-        if (stats.streak >= 3) {
-          pointGain = Math.floor(pointGain * 1.5);
-          coinGain = Math.floor(coinGain * 1.2);
-        }
-
-        stats.sessionPoints += pointGain;
-
-        const newTotalPoints = (currentUser.data.quizScore || 0) + pointGain;
-        const level = newTotalPoints < 500 ? "Novice" :
-                      newTotalPoints < 2000 ? "Scholar" :
-                      newTotalPoints < 5000 ? "Professor" : "Grandmaster";
-
-        await usersData.set(event.senderID, {
-          money: (currentUser.money || 0) + coinGain,
-          data: {
-            ...currentUser.data,
-            quizScore: newTotalPoints,
-            quizTotal: (currentUser.data.quizTotal || 0) + 1,
-            quizCorrect: (currentUser.data.quizCorrect || 0) + 1,
-            quizLevel: level
-          }
-        });
-
-        await api.editMessage(`✅ 𝗖𝗢𝗥𝗥𝗘𝗖𝗧\n━━━━━━━━━━━━━━━━━━━━━━\n💰 +${coinGain} coins\n⭐ +${pointGain} pts ${stats.streak >= 3 ? '(Streak! 🔥)' : ''}\n🎓 𝗟𝗲𝘃𝗲𝗹: ${level}\n📈 𝗦𝗲𝘀𝘀𝗶𝗼𝗻: ${stats.correct}/${stats.total}\n━━━━━━━━━━━━━━━━━━━━━━`, quizMessageID);
-      } else {
-        stats.incorrect++;
-        stats.streak = 0;
-
-        await usersData.set(event.senderID, {
-          data: {
-            ...currentUser.data,
-            quizTotal: (currentUser.data.quizTotal || 0) + 1
-          }
-        });
-
-        await api.editMessage(`❌ 𝗪𝗥𝗢𝗡𝗚\n━━━━━━━━━━━━━━━━━━━━━━\n𝗖𝗼𝗿𝗿𝗲𝗰𝘁: ${quizData.correctLetter}. ${quizData.correctAnswer}\n🔥 Streak Lost!\n━━━━━━━━━━━━━━━━━━━━━━`, quizMessageID);
+      if (stats.streak >= 3) {
+        pointGain = Math.floor(pointGain * 1.5);
+        coinGain = Math.floor(coinGain * 1.2);
       }
 
-      setTimeout(() => this.getNextQuestion(message, event, categoryId, stats), 2000);
+      stats.sessionPoints += pointGain;
+
+      const newTotalPoints = (currentUser.data?.quizScore || 0) + pointGain;
+      const level = newTotalPoints < 500 ? "Novice" :
+                    newTotalPoints < 2000 ? "Scholar" :
+                    newTotalPoints < 5000 ? "Professor" : "Grandmaster";
+
+      // Preserve all existing fields including exp and money
+      await usersData.set(event.senderID, {
+        ...currentUser,
+        money: (currentUser.money || 0) + coinGain,
+        exp: (currentUser.exp || 0) + pointGain,
+        data: {
+          ...currentUser.data,
+          quizScore: newTotalPoints,
+          quizTotal: (currentUser.data?.quizTotal || 0) + 1,
+          quizCorrect: (currentUser.data?.quizCorrect || 0) + 1,
+          quizLevel: level
+        }
+      });
+
+      await api.editMessage(
+        `✅ 𝗖𝗢𝗥𝗥𝗘𝗖𝗧!\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💰 +${coinGain} coins\n` +
+        `⭐ +${pointGain} pts${stats.streak >= 3 ? ' (Streak! 🔥)' : ''}\n` +
+        `🎓 𝗟𝗲𝘃𝗲𝗹: ${level}\n` +
+        `📈 𝗦𝗲𝘀𝘀𝗶𝗼𝗻: ${stats.correct}/${stats.total}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        quizMessageID
+      );
+    } else {
+      stats.incorrect++;
+      stats.streak = 0;
+
+      // Preserve money and exp — only update data
+      await usersData.set(event.senderID, {
+        ...currentUser,
+        data: {
+          ...currentUser.data,
+          quizTotal: (currentUser.data?.quizTotal || 0) + 1
+        }
+      });
+
+      await api.editMessage(
+        `❌ 𝗪𝗥𝗢𝗡𝗚\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `𝗖𝗼𝗿𝗿𝗲𝗰𝘁: ${quizData.correctLetter}. ${quizData.correctAnswer}\n` +
+        `🔥 Streak lost!\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━`,
+        quizMessageID
+      );
     }
+
+    // Next question after 2s — use self to preserve 'this' context
+    setTimeout(() => self.getNextQuestion(message, event, categoryId, stats), 2000);
   },
 
   onChat: async function({ message, event, usersData }) {
     const body = event.body?.toLowerCase() || "";
-    
     const aiPatterns = [
-      '@meta', '@ai', '@gpt', '@chatgpt', '@claude', '@gemini', 
+      '@meta', '@ai', '@gpt', '@chatgpt', '@claude', '@gemini',
       '@copilot', '@bard', '/meta', '/ai', 'hey meta', 'meta ai',
       '@bing', '@perplexity', 'hey google', '@assistant'
     ];
 
-    const isCheating = aiPatterns.some(pattern => body.includes(pattern));
+    if (!aiPatterns.some(p => body.includes(p))) return;
 
     const hasActiveQuiz = Array.from(global.GoatBot.onReply.values()).some(
-      reply => reply.author === event.senderID && reply.commandName === "quiz"
+      r => r.author === event.senderID && r.commandName === "quiz"
     );
+    if (!hasActiveQuiz) return;
 
-    if (isCheating && hasActiveQuiz) {
-      const currentUser = await usersData.get(event.senderID);
-      
-      const expPenalty = 500;
-      const moneyPenalty = 50000;
-      
-      const newExp = Math.max(0, (currentUser.exp || 0) - expPenalty);
-      const newMoney = Math.max(0, (currentUser.money || 0) - moneyPenalty);
-      
-      await usersData.set(event.senderID, {
-        exp: newExp,
-        money: newMoney,
-        data: {
-          ...currentUser.data,
-          cheaterFlag: (currentUser.data.cheaterFlag || 0) + 1,
-          lastCheatTime: Date.now()
-        }
-      });
-
-      for (const [msgId, reply] of global.GoatBot.onReply.entries()) {
-        if (reply.author === event.senderID && reply.commandName === "quiz") {
-          global.GoatBot.onReply.delete(msgId);
-        }
+    const currentUser = await usersData.get(event.senderID);
+    await usersData.set(event.senderID, {
+      ...currentUser,
+      exp: Math.max(0, (currentUser.exp || 0) - 500),
+      money: Math.max(0, (currentUser.money || 0) - 50000),
+      data: {
+        ...currentUser.data,
+        cheaterFlag: (currentUser.data?.cheaterFlag || 0) + 1,
+        lastCheatTime: Date.now()
       }
+    });
 
-      return message.reply(
-        `🚨 𝗖𝗛𝗘𝗔𝗧 𝗗𝗘𝗧𝗘𝗖𝗧𝗘𝗗! 🚨\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `Trying to use AI during a quiz?\n\n` +
-        `⚠️ 𝗣𝗘𝗡𝗔𝗟𝗧𝗜𝗘𝗦:\n` +
-        `❌ -${expPenalty} EXP\n` +
-        `❌ -$${moneyPenalty.toLocaleString()}\n` +
-        `🚫 Strike: ${currentUser.data.cheaterFlag || 1}\n` +
-        `⛔ Quiz terminated\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `Play fair! Use your own brain! 🧠`
-      );
+    for (const [msgId, reply] of global.GoatBot.onReply.entries()) {
+      if (reply.author === event.senderID && reply.commandName === "quiz") {
+        global.GoatBot.onReply.delete(msgId);
+      }
     }
+
+    return message.reply(
+      `🚨 𝗖𝗛𝗘𝗔𝗧 𝗗𝗘𝗧𝗘𝗖𝗧𝗘𝗗! 🚨\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Trying to use AI during a quiz?\n\n` +
+      `⚠️ 𝗣𝗘𝗡𝗔𝗟𝗧𝗜𝗘𝗦:\n` +
+      `❌ -500 EXP\n` +
+      `❌ -$50,000\n` +
+      `🚫 Strike: ${(currentUser.data?.cheaterFlag || 0) + 1}\n` +
+      `⛔ Quiz terminated\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Play fair! Use your own brain! 🧠`
+    );
   },
 
   getNextQuestion: async function(message, event, categoryId, stats) {
+    const self = this;
     try {
       const res = await axios.get(`https://opentdb.com/api.php?amount=1&category=${categoryId}&type=multiple`);
+
+      // Handle API rate limit response (response_code 5)
+      if (res.data.response_code === 5) {
+        await new Promise(r => setTimeout(r, 5000));
+        return self.getNextQuestion(message, event, categoryId, stats);
+      }
+
       const data = res.data.results[0];
-      const decode = (str) => str.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&").replace(/&deg;/g, "°").replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&rsquo;/g, "'");
+      const decode = str => str
+        .replace(/&quot;/g, '"').replace(/&#039;/g, "'")
+        .replace(/&amp;/g, "&").replace(/&deg;/g, "°")
+        .replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"')
+        .replace(/&rsquo;/g, "'").replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">").replace(/&laquo;/g, "«")
+        .replace(/&raquo;/g, "»");
 
       const question = decode(data.question);
       const correctAnswer = decode(data.correct_answer);
-      const options = [...data.incorrect_answers.map(decode), correctAnswer].sort(() => Math.random() - 0.5);
+      const options = [...data.incorrect_answers.map(decode), correctAnswer]
+        .sort(() => Math.random() - 0.5);
 
       const letters = ["A", "B", "C", "D"];
       const correctLetter = letters[options.indexOf(correctAnswer)];
       const optionsText = options.map((opt, i) => `${letters[i]}. ${opt}`).join("\n\n");
 
-      const sent = await message.reply(`❓ 𝗤𝗨𝗘𝗦𝗧𝗜𝗢𝗡\n━━━━━━━━━━━━━━━━━━━━━━\n𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝘆: ${data.category}\n\n${question}\n\n${optionsText}\n\n━━━━━━━━━━━━━━━━━━━━━━\n💡 Reply A, B, C, D or 'stop'\n⏰ Time limit: 18 seconds`);
+      const sent = await message.reply(
+        `❓ 𝗤𝗨𝗘𝗦𝗧𝗜𝗢𝗡\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `🗂️ ${data.category}\n` +
+        `🔰 ${data.difficulty.charAt(0).toUpperCase() + data.difficulty.slice(1)}\n\n` +
+        `${question}\n\n` +
+        `${optionsText}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💡 Reply A, B, C or D  |  'stop' to quit\n` +
+        `⏰ 18 seconds`
+      );
 
       global.GoatBot.onReply.set(sent.messageID, {
-        commandName: this.config.name,
+        commandName: self.config.name,
         messageID: sent.messageID,
         author: event.senderID,
         type: "answerQuiz",
@@ -238,51 +272,39 @@ module.exports = {
         threadID: event.threadID
       });
 
-      // Start timeout timer - 18 seconds
+      // ── Timeout: 18 seconds ───────────────────────────────
       setTimeout(async () => {
-        const reply = global.GoatBot.onReply.get(sent.messageID);
-        if (reply && reply.author === event.senderID && reply.type === "answerQuiz") {
-          // Time's up - END SESSION
-          global.GoatBot.onReply.delete(sent.messageID);
-          
-          stats.total++;
-          stats.incorrect++;
-          
-          const accuracy = stats.total > 0 ? ((stats.correct / stats.total) * 100).toFixed(1) : 0;
+        // Only fire if entry still exists (user hasn't answered yet)
+        if (!global.GoatBot.onReply.has(sent.messageID)) return;
+        global.GoatBot.onReply.delete(sent.messageID);
 
-          try {
-            await message.api?.editMessage?.(
-              `⏰ 𝗧𝗜𝗠𝗘'𝗦 𝗨𝗣! 𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗡𝗗𝗘𝗗\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `You took too long to answer!\n` +
-              `Correct: ${correctLetter}. ${correctAnswer}\n\n` +
-              `📊 𝗙𝗶𝗻𝗮𝗹 𝗦𝘁𝗮𝘁𝘀:\n` +
-              `📝 𝗧𝗼𝘁𝗮𝗹: ${stats.total}\n` +
-              `✅ 𝗖𝗼𝗿𝗿𝗲𝗰𝘁: ${stats.correct}\n` +
-              `🎯 𝗔𝗰𝗰𝘂𝗿𝗮𝗰𝘆: ${accuracy}%\n` +
-              `✨ 𝗦𝗲𝘀𝘀𝗶𝗼𝗻 𝗣𝘁𝘀: +${stats.sessionPoints}\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━`,
-              sent.messageID
-            );
-          } catch (e) {
-            // If edit fails, send new message
-            message.reply(
-              `⏰ 𝗧𝗜𝗠𝗘'𝗦 𝗨𝗣! 𝗦𝗘𝗦𝗦𝗜𝗢𝗡 𝗘𝗡𝗗𝗘𝗗\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `📝 𝗧𝗼𝘁𝗮𝗹: ${stats.total}\n` +
-              `✅ 𝗖𝗼𝗿𝗿𝗲𝗰𝘁: ${stats.correct}\n` +
-              `🎯 𝗔𝗰𝗰𝘂𝗿𝗮𝗰𝘆: ${accuracy}%\n` +
-              `✨ 𝗦𝗲𝘀𝘀𝗶𝗼𝗻 𝗣𝘁𝘀: +${stats.sessionPoints}\n` +
-              `━━━━━━━━━━━━━━━━━━━━━━`
-            );
-          }
+        stats.total++;
+        stats.incorrect++;
+        stats.streak = 0;
+        const accuracy = stats.total > 0 ? ((stats.correct / stats.total) * 100).toFixed(1) : 0;
 
-          // DO NOT continue - session ends here
-        }
-      }, 18000); // 18 seconds
+        try {
+          await message.api?.editMessage?.(
+            `⏰ 𝗧𝗜𝗠𝗘'𝗦 𝗨𝗣!\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `✔️ Answer: ${correctLetter}. ${correctAnswer}\n\n` +
+            `📊 𝗦𝗲𝘀𝘀𝗶𝗼𝗻 𝗦𝘁𝗮𝘁𝘀:\n` +
+            `📝 Total: ${stats.total}  ✅ Correct: ${stats.correct}\n` +
+            `🎯 Accuracy: ${accuracy}%\n` +
+            `✨ Points: ${stats.sessionPoints}\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `Next question in 3s...`,
+            sent.messageID
+          );
+        } catch (_) {}
+
+        // Continue to next question after timeout (don't end session)
+        setTimeout(() => self.getNextQuestion(message, event, categoryId, stats), 3000);
+
+      }, 18000);
 
     } catch (err) {
-      return message.reply("❌ 𝗔𝗣𝗜 𝗕𝘂𝘀𝘆. Try again.");
+      return message.reply("❌ 𝗔𝗣𝗜 𝗕𝘂𝘀𝘆. Retrying in 5 seconds...");
     }
   }
 };

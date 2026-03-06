@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "ban",
     aliases: ["unban"],
-    version: "2.0",
+    version: "2.1",
     author: "Charles MK",
     countDown: 5,
     role: 2,
@@ -16,30 +16,29 @@ module.exports = {
     }
   },
 
-  onStart: async function ({ api, event, args, usersData, message, globalData }) {
-    const { threadID, messageID, messageReply, mentions, senderID } = event;
+  onStart: async function ({ api, event, args, usersData, message }) {
+    const { senderID, messageReply, mentions } = event;
 
-    // List banned users
+    // ── List banned users ─────────────────────────────────────
     if (args[0] === "list") {
-      const bannedList = await globalData.get("bannedUsers", "data", []);
-      
-      if (bannedList.length === 0) {
+      const allUsers = await usersData.getAll();
+      const bannedUsers = allUsers.filter(u => u.banned?.status === true);
+
+      if (bannedUsers.length === 0) {
         return message.reply("✅ 𝖭𝗈 𝗎𝗌𝖾𝗋𝗌 𝖺𝗋𝖾 𝖼𝗎𝗋𝗋𝖾𝗇𝗍𝗅𝗒 𝖻𝖺𝗇𝗇𝖾𝖽");
       }
 
       let response = "🚫 𝗕𝗔𝗡𝗡𝗘𝗗 𝗨𝗦𝗘𝗥𝗦\n━━━━━━━━━━━━━━━━━━\n\n";
-      
-      for (const uid of bannedList) {
-        const userName = await usersData.getName(uid);
-        response += `👤 ${userName}\n   𝖴𝖨𝖣: ${uid}\n\n`;
+      for (const user of bannedUsers) {
+        const name = await usersData.getName(user.userID);
+        response += `👤 ${name}\n   𝖴𝖨𝖣: ${user.userID}\n\n`;
       }
+      response += `━━━━━━━━━━━━━━━━━━\n📊 𝖳𝗈𝗍𝖺𝗅: ${bannedUsers.length} 𝗎𝗌𝖾𝗋(𝗌)`;
 
-      response += `━━━━━━━━━━━━━━━━━━\n📊 𝖳𝗈𝗍𝖺𝗅: ${bannedList.length} 𝗎𝗌𝖾𝗋(𝗌)`;
-      
       return message.reply(response);
     }
 
-    // Determine target user
+    // ── Determine target ──────────────────────────────────────
     let targetID = null;
 
     if (messageReply) {
@@ -61,36 +60,27 @@ module.exports = {
       );
     }
 
-    // Prevent banning yourself or other admins
-    const config = global.GoatBot.config;
-    const adminBot = config.adminBot || [];
+    // ── Safety checks ─────────────────────────────────────────
+    const adminBot = global.GoatBot?.config?.adminBot || [];
 
     if (targetID === senderID) {
       return message.reply("❌ 𝖸𝗈𝗎 𝖼𝖺𝗇'𝗍 𝖻𝖺𝗇 𝗒𝗈𝗎𝗋𝗌𝖾𝗅𝖿!");
     }
-
     if (adminBot.includes(targetID)) {
       return message.reply("❌ 𝖸𝗈𝗎 𝖼𝖺𝗇'𝗍 𝖻𝖺𝗇 𝖺𝗇𝗈𝗍𝗁𝖾𝗋 𝖻𝗈𝗍 𝖺𝖽𝗆𝗂𝗇!");
     }
 
     try {
-      // Get current banned list
-      let bannedData = await globalData.get("bannedUsers");
-      
-      // Initialize if doesn't exist
-      if (!bannedData) {
-        await globalData.create("bannedUsers", { data: [] });
-        bannedData = { data: [] };
-      }
-
-      const bannedList = bannedData.data || [];
+      const targetData = await usersData.get(targetID);
       const targetName = await usersData.getName(targetID);
-      const isBanned = bannedList.includes(targetID);
+      const isBanned = targetData?.banned?.status === true;
 
       if (isBanned) {
-        // Unban user
-        const newList = bannedList.filter(id => id !== targetID);
-        await globalData.set("bannedUsers", newList, "data");
+        // ── Unban: set banned = false ─────────────────────────
+        await usersData.set(targetID, {
+          ...targetData,
+          banned: { status: false }
+        });
 
         return message.reply(
           `✅ 𝗨𝗡𝗕𝗔𝗡𝗡𝗘𝗗\n` +
@@ -100,9 +90,15 @@ module.exports = {
           `💚 𝖴𝗌𝖾𝗋 𝖼𝖺𝗇 𝗇𝗈𝗐 𝗎𝗌𝖾 𝗍𝗁𝖾 𝖻𝗈𝗍 𝖺𝗀𝖺𝗂𝗇`
         );
       } else {
-        // Ban user
-        const newList = [...bannedList, targetID];
-        await globalData.set("bannedUsers", newList, "data");
+        // ── Ban: set banned = true ────────────────────────────
+        await usersData.set(targetID, {
+          ...targetData,
+          banned: {
+            status: true,
+            reason: "Banned by admin",
+            date: new Date().toLocaleString()
+          }
+        });
 
         return message.reply(
           `🚫 𝗕𝗔𝗡𝗡𝗘𝗗\n` +
