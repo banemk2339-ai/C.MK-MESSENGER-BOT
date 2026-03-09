@@ -2,7 +2,7 @@ module.exports = {
   config: {
     name: "give",
     aliases: ["pay", "transfer"],
-    version: "1.0",
+    version: "1.1",
     author: "Charles MK",
     countDown: 5,
     role: 0,
@@ -20,16 +20,12 @@ module.exports = {
     let amountStr;
 
     if (messageReply) {
-      // Priority 1: Reply to a message
       targetID = messageReply.senderID;
       amountStr = args[0];
     } else if (Object.keys(mentions).length > 0) {
-      // Priority 2: Tagging someone (e.g., +give @user 20000 or +give 20000 @user)
       targetID = Object.keys(mentions)[0];
-      // Find the amount - it's the argument that's a valid number
       amountStr = args.find(arg => !isNaN(parseInt(arg)) && parseInt(arg) > 0);
     } else if (args.length >= 2) {
-      // Priority 3: Using UID (e.g., +give 10000000 300)
       targetID = args[0];
       amountStr = args[1];
     }
@@ -52,25 +48,29 @@ module.exports = {
       return message.reply("❌ 𝖴𝗌𝖾𝗋 𝗇𝗈𝗍 𝖿𝗈𝗎𝗇𝖽 𝗂𝗇 𝗍𝗁𝖾 𝖽𝖺𝗍𝖺𝖻𝖺𝗌𝖾.");
     }
 
-    if (senderData.money < amount) {
-      return message.reply(`💸 𝖸𝗈𝗎 𝖺𝗋𝖾 𝗍𝗈𝗈 𝗉𝗈𝗈𝗋! 𝖸𝗈𝗎 𝗇𝖾𝖾𝖽 $${(amount - senderData.money).toLocaleString()} 𝗆𝗈𝗋𝖾.`);
+    // 3. Fee Calculation
+    const fee = Math.floor(amount * 0.06);       // 6% fee deducted from sender
+    const totalDeducted = amount + fee;           // Sender loses amount + fee
+    const receiverGets = amount;                  // Receiver gets the full amount
+
+    if (senderData.money < totalDeducted) {
+      return message.reply(
+        `💸 𝖸𝗈𝗎 𝖼𝖺𝗇'𝗍 𝖺𝖿𝖿𝗈𝗋𝖽 𝗍𝗁𝗂𝗌 𝗍𝗋𝖺𝗇𝗌𝖿𝖾𝗋!\n` +
+        `💰 𝖠𝗆𝗈𝗎𝗇𝗍: $${amount.toLocaleString()}\n` +
+        `🏦 𝖥𝖾𝖾 (6%): $${fee.toLocaleString()}\n` +
+        `📊 𝖳𝗈𝗍𝖺𝗅 𝖭𝖾𝖾𝖽𝖾𝖽: $${totalDeducted.toLocaleString()}\n` +
+        `💳 𝖸𝗈𝗎𝗋 𝖡𝖺𝗅𝖺𝗇𝖼𝖾: $${senderData.money.toLocaleString()}`
+      );
     }
 
-    // 3. Logic & Reward Calculation
-    const reward = Math.floor(amount * 0.06); // 6% Reward
+    // 4. Apply Transaction
+    const finalSenderMoney = senderData.money - totalDeducted;
+    const finalReceiverMoney = (receiverData.money || 0) + receiverGets;
 
-    // Update Receiver
-    await usersData.set(targetID, {
-      money: (receiverData.money || 0) + amount
-    });
+    await usersData.set(targetID, { money: finalReceiverMoney });
+    await usersData.set(senderID, { money: finalSenderMoney });
 
-    // Update Sender (Subtract amount, then add reward)
-    const finalSenderMoney = (senderData.money - amount) + reward;
-    await usersData.set(senderID, {
-      money: finalSenderMoney
-    });
-
-    // 4. Send Styled Success Message
+    // 5. Send Success Message
     const senderName = senderData.name;
     const receiverName = receiverData.name;
 
@@ -79,8 +79,9 @@ module.exports = {
       `━━━━━━━━━━━━━━━━━━\n` +
       `👤 𝖥𝗋𝗈𝗆: ${senderName}\n` +
       `👤 𝖳𝗈: ${receiverName}\n` +
-      `💰 𝖠𝗆𝗈𝗎𝗇𝗍: $${amount.toLocaleString()}\n\n` +
-      `🎁 𝖦𝖾𝗇𝖾𝗋𝗈𝗌𝗂𝗍𝗒 𝖱𝖾𝗐𝖺𝗋𝖽: $${reward.toLocaleString()} (6%)\n` +
+      `💰 𝖠𝗆𝗈𝗎𝗇𝗍 𝖲𝖾𝗇𝗍: $${receiverGets.toLocaleString()}\n` +
+      `🏦 𝖳𝗋𝖺𝗇𝗌𝖿𝖾𝗋 𝖥𝖾𝖾 (6%): -$${fee.toLocaleString()}\n` +
+      `📊 𝖳𝗈𝗍𝖺𝗅 𝖣𝖾𝖽𝗎𝖼𝗍𝖾𝖽: $${totalDeducted.toLocaleString()}\n` +
       `💳 𝖸𝗈𝗎𝗋 𝖭𝖾𝗐 𝖡𝖺𝗅𝖺𝗇𝖼𝖾: $${finalSenderMoney.toLocaleString()}\n` +
       `━━━━━━━━━━━━━━━━━━`,
       event.threadID,
