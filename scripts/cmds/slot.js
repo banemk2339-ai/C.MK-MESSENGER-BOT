@@ -502,7 +502,7 @@ module.exports = {
       resultLine = `💸 𝙔𝙊𝙐 𝙇𝙊𝙎𝙏 -${formatBalance(spinAmount)}`;
     }
 
-    // Animated spinning text — send first frame, then edit through frames
+    // Animated spinning text — loops until image is ready
     const spinFrames = [
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...`,
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...`,
@@ -510,26 +510,49 @@ module.exports = {
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...`,
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...`,
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...\n🎴 𝙍𝙚𝙫𝙚𝙖𝙡𝙞𝙣𝙜 𝙨𝙤𝙤𝙣...`,
+    ];
+
+    // Looping tail frames — cycles while image is still rendering
+    const loopFrames = [
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...\n🎴 𝙍𝙚𝙫𝙚𝙖𝙡𝙞𝙣𝙜 𝙨𝙤𝙤𝙣...\n🎰 𝙃𝙤𝙡𝙙 𝙤𝙣...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...\n🎴 𝙍𝙚𝙫𝙚𝙖𝙡𝙞𝙣𝙜 𝙨𝙤𝙤𝙣...\n🎰 𝙃𝙤𝙡𝙙 𝙤𝙣...\n⚡ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙧𝙚𝙖𝙙𝙮...`,
     ];
 
     const spinMsg = await message.reply(spinFrames[0]);
     const frameDelay = ms => new Promise(r => setTimeout(r, ms));
 
-    // Start image render and frame animation in parallel
+    // Start image render in parallel
+    let imageReady = false;
+    let tmpResultPath = null;
     const imagePromise = (async () => {
       const tmpResult = path.join(tmpDir, `slot_result_${senderID}_${Date.now()}.png`);
       const resultBuf = await drawSlotImage([reel1, reel2, reel3], { ...statusBase, type: resultType });
       fs.writeFileSync(tmpResult, resultBuf);
-      return tmpResult;
+      tmpResultPath = tmpResult;
+      imageReady = true;
     })();
 
+    // Play through intro frames
     for (let i = 1; i < spinFrames.length; i++) {
+      if (imageReady) break;
       await frameDelay(400);
       try { await api.editMessage(spinFrames[i], spinMsg.messageID); } catch {}
     }
 
-    // Wait for image to finish rendering (may already be done)
-    const tmpResult = await imagePromise;
+    // Keep looping tail frames until image is ready
+    let loopIdx = 0;
+    while (!imageReady) {
+      await frameDelay(500);
+      if (imageReady) break;
+      try { await api.editMessage(loopFrames[loopIdx % loopFrames.length], spinMsg.messageID); } catch {}
+      loopIdx++;
+    }
+
+    // Wait for image (should be ready by now, but just in case)
+    await imagePromise;
+    const tmpResult = tmpResultPath;
 
     // Unsend spinning text, send result image
     try { await api.unsendMessage(spinMsg.messageID); } catch {}
