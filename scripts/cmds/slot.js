@@ -9,7 +9,6 @@ const slotUsage = new Map();
 const SYMBOLS = [
   { name: "apple",    file: "apple.png"   },
   { name: "pear",     file: "pear.png"    },
-  { name: "orange",   file: "orange.png"  },
   { name: "bananas",  file: "bananas.png" },
   { name: "grapes",   file: "grapes.png"  },
   { name: "diamond",  file: "diamond.png" },
@@ -93,15 +92,44 @@ module.exports = {
         ctx.fill();
       }
 
-      // ── title ──
+      // ── title — "MK SLOTS" 3D shadow + neon gold glow ──
       ctx.save();
-      ctx.font = "bold 52px Arial";
       ctx.textAlign = "center";
-      // yellow glow
+      ctx.font = "bold 54px Arial";
+
+      // 3D depth layers — dark offset copies stacked to simulate extrusion
+      const depthColor = "#7a5500";
+      for (let d = 6; d >= 1; d--) {
+        ctx.globalAlpha = 0.55;
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = depthColor;
+        ctx.fillText("MK SLOTS", W / 2 + d, 68 + d);
+      }
+
+      // drop shadow beneath the 3D stack
+      ctx.globalAlpha = 0.35;
+      ctx.shadowColor = "#000000";
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetX = 6;
+      ctx.shadowOffsetY = 8;
+      ctx.fillStyle = "#000000";
+      ctx.fillText("MK SLOTS", W / 2, 68);
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // glow bloom pass
+      ctx.globalAlpha = 0.3;
       ctx.shadowColor = "#ffd700";
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = "#ffe066";
-      ctx.fillText("LUCKY SLOTS", W / 2, 68);
+      ctx.shadowBlur = 40;
+      ctx.fillStyle = "#ffd700";
+      ctx.fillText("MK SLOTS", W / 2, 68);
+
+      // crisp front face — bright gold
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = "#ffd700";
+      ctx.fillStyle = "#fffbe0";
+      ctx.fillText("MK SLOTS", W / 2, 68);
       ctx.restore();
 
       // ── reel panel ──
@@ -179,15 +207,70 @@ module.exports = {
         }
       }
 
-      // ── player / bet info ──
-      ctx.save();
-      ctx.font = "bold 22px Arial";
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "left";
-      ctx.fillText(`PLAYER: ${status.playerName.toUpperCase()}`, panelX, panelY + panelH + 36);
-      ctx.textAlign = "right";
-      ctx.fillText(`BET: ${formatBalance(status.bet)}`, panelX + panelW, panelY + panelH + 36);
-      ctx.restore();
+      // ── white glow text — used for banner win/loss/balance lines ──
+      function drawGlowText(text, x, y, font, glowColor, align) {
+        ctx.save();
+        ctx.font = font;
+        ctx.textAlign = align || "left";
+        ctx.textBaseline = "alphabetic";
+        // outer bloom
+        ctx.globalAlpha = 0.2;
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 28;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(text, x, y);
+        // mid glow
+        ctx.globalAlpha = 0.55;
+        ctx.shadowBlur = 14;
+        ctx.fillText(text, x, y);
+        // crisp solid
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 7;
+        ctx.fillText(text, x, y);
+        ctx.restore();
+      }
+
+      // ── white 3D glow text — used for PLAYER and BET ──
+      function draw3DWhiteText(text, x, y, font, align) {
+        ctx.save();
+        ctx.font = font;
+        ctx.textAlign = align || "left";
+        ctx.textBaseline = "alphabetic";
+        // 3D depth stack — dark grey offset copies
+        for (let d = 4; d >= 1; d--) {
+          ctx.globalAlpha = 0.5;
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#222244";
+          const ox = align === "right" ? -d : d;
+          ctx.fillText(text, x + ox, y + d);
+        }
+        // drop shadow
+        ctx.globalAlpha = 0.3;
+        ctx.shadowColor = "#000000";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = align === "right" ? -4 : 4;
+        ctx.shadowOffsetY = 5;
+        ctx.fillStyle = "#000000";
+        ctx.fillText(text, x, y);
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        // glow bloom
+        ctx.globalAlpha = 0.25;
+        ctx.shadowColor = "#aaddff";
+        ctx.shadowBlur = 22;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(text, x, y);
+        // crisp white front face
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "#aaddff";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(text, x, y);
+        ctx.restore();
+      }
+
+      draw3DWhiteText(`PLAYER: ${status.playerName.toUpperCase()}`, panelX, panelY + panelH + 36, "bold 22px Arial", "left");
+      draw3DWhiteText(`BET: ${formatBalance(status.bet)}`, panelX + panelW, panelY + panelH + 36, "bold 22px Arial", "right");
 
       // ── result banner ──
       const bannerY = panelY + panelH + 56;
@@ -205,22 +288,22 @@ module.exports = {
         line1 = "🎰  SPINNING...";
         line2 = "";
       } else if (status.type === "jackpot") {
-        bannerColor = "rgba(20,80,30,0.92)";
-        bannerBorder = "#0f0";
-        bannerGlow = "#0f0";
+        bannerColor = "rgba(40,10,90,0.95)";
+        bannerBorder = "#bf5fff";
+        bannerGlow = "#bf5fff";
         line1 = `🎉  JACKPOT!  WIN +${formatBalance(status.reward)}`;
         line2 = `NEW BALANCE: ${formatBalance(status.newBalance)}`;
       } else if (status.type === "win") {
-        bannerColor = "rgba(20,80,30,0.92)";
-        bannerBorder = "#0f0";
-        bannerGlow = "#0f0";
+        bannerColor = "rgba(10,20,80,0.95)";
+        bannerBorder = "#5af";
+        bannerGlow = "#5af";
         line1 = `✨  WIN +${formatBalance(status.reward)}`;
         line2 = `NEW BALANCE: ${formatBalance(status.newBalance)}`;
       } else {
-        // loss
-        bannerColor = "rgba(80,20,20,0.92)";
-        bannerBorder = "#f44";
-        bannerGlow = "#f44";
+        // loss — purple/blue instead of red
+        bannerColor = "rgba(20,10,70,0.95)";
+        bannerBorder = "#7055ee";
+        bannerGlow = "#7055ee";
         line1 = `💸  YOU LOST  -${formatBalance(status.bet)}`;
         line2 = `NEW BALANCE: ${formatBalance(status.newBalance)}`;
       }
@@ -246,33 +329,36 @@ module.exports = {
       ctx.stroke();
       ctx.restore();
 
-      // banner text
-      ctx.save();
-      ctx.textAlign = "center";
-      ctx.shadowColor = bannerBorder;
-      ctx.shadowBlur = 10;
+      // banner text — bold Arial, triple-pass white glow
       if (line2) {
-        ctx.font = "bold 28px Arial";
-        ctx.fillStyle = status.type === "loss" ? "#ff6666" : "#44ff88";
-        ctx.fillText(line1, bannerX + bannerW / 2, bannerY + 28);
-        ctx.font = "bold 22px Arial";
-        ctx.fillStyle = "#cccccc";
-        ctx.shadowBlur = 0;
-        ctx.fillText(line2, bannerX + bannerW / 2, bannerY + 58);
+        drawGlowText(line1, bannerX + bannerW / 2, bannerY + 32, "bold 22px Arial", bannerGlow, "center");
+        drawGlowText(line2, bannerX + bannerW / 2, bannerY + 58, "bold 17px Arial", bannerGlow, "center");
       } else {
-        ctx.font = "bold 28px Arial";
-        ctx.fillStyle = "#aad4ff";
-        ctx.fillText(line1, bannerX + bannerW / 2, bannerY + bannerH / 2 + 10);
+        drawGlowText(line1, bannerX + bannerW / 2, bannerY + bannerH / 2 + 10, "bold 22px Arial", bannerGlow, "center");
       }
-      ctx.restore();
+
+      // ── neon vignette overlay (gives overall image a neon glow feel) ──
+      const neonOverlay = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.78);
+      neonOverlay.addColorStop(0, "rgba(0,0,0,0)");
+      neonOverlay.addColorStop(0.7, "rgba(20,10,60,0.0)");
+      neonOverlay.addColorStop(1, "rgba(30,80,180,0.22)");
+      ctx.fillStyle = neonOverlay;
+      ctx.fillRect(0, 0, W, H);
+
+      // subtle cyan edge glow lines (top + bottom)
+      const topGlow = ctx.createLinearGradient(0, 0, 0, 12);
+      topGlow.addColorStop(0, "rgba(80,180,255,0.35)");
+      topGlow.addColorStop(1, "rgba(80,180,255,0)");
+      ctx.fillStyle = topGlow;
+      ctx.fillRect(0, 0, W, 12);
+
+      const botGlow = ctx.createLinearGradient(0, H - 12, 0, H);
+      botGlow.addColorStop(0, "rgba(80,180,255,0)");
+      botGlow.addColorStop(1, "rgba(80,180,255,0.35)");
+      ctx.fillStyle = botGlow;
+      ctx.fillRect(0, H - 12, W, 12);
 
       return canvas.toBuffer("image/png");
-    }
-
-    // Save buffer to temp file and return a stream
-    function bufferToStream(buffer, tmpPath) {
-      fs.writeFileSync(tmpPath, buffer);
-      return fs.createReadStream(tmpPath);
     }
 
     // ── status command ────────────────────────────────────────────────────────
@@ -384,18 +470,16 @@ module.exports = {
 
     usage.spins += 1;
     slotUsage.set(senderID, usage);
-    const spinsLeft = 10 - usage.spins;
 
     await usersData.set(senderID, {
       ...userData,
       money: newBalance,
     });
 
-    // ── animation: spinning frame → result frame ──────────────────────────────
+    // ── send spinning text immediately, draw image in parallel ──────────────
 
     const tmpDir = path.join(__dirname, "tmp");
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-    const tmpPath = path.join(tmpDir, `slot_${senderID}_${Date.now()}.png`);
 
     const statusBase = {
       playerName,
@@ -404,37 +488,7 @@ module.exports = {
       newBalance,
     };
 
-    // Frame 1: spinning
-    const spinningBuf = await drawSlotImage([null, null, null], { ...statusBase, type: "spinning" });
-    const spinStream = bufferToStream(spinningBuf, tmpPath);
-
-    const sentMsg = await message.reply({
-      body: "",
-      attachment: spinStream,
-    });
-
-    // Clean up temp file
-    try { fs.unlinkSync(tmpPath); } catch {}
-
-    // Short delay then reveal result
-    await new Promise(r => setTimeout(r, 1500));
-
-    const resultBuf = await drawSlotImage([reel1, reel2, reel3], { ...statusBase, type: resultType });
-    const tmpPath2 = path.join(tmpDir, `slot_${senderID}_${Date.now()}_result.png`);
-    fs.writeFileSync(tmpPath2, resultBuf);
-
-    await api.editMessage(
-      {
-        body: "",
-        attachment: fs.createReadStream(tmpPath2),
-      },
-      sentMsg.messageID
-    );
-
-    try { fs.unlinkSync(tmpPath2); } catch {}
-
-    // ── text result appended after image ─────────────────────────────────────
-
+    const spinsLeft = 10 - usage.spins;
     const spinInfo = spinsLeft > 0
       ? `🎮 𝗦𝗽𝗶𝗻𝘀: ${spinsLeft}/10`
       : `⏰ No spins left! Cooldown: 1 hour`;
@@ -448,8 +502,43 @@ module.exports = {
       resultLine = `💸 𝙔𝙊𝙐 𝙇𝙊𝙎𝙏 -${formatBalance(spinAmount)}`;
     }
 
-    return message.reply(
-      `${resultLine}\n💰 𝗕𝗔𝗟𝗔𝗡𝗖𝗘: ${formatBalance(newBalance)}\n${spinInfo}`
-    );
+    // Animated spinning text — send first frame, then edit through frames
+    const spinFrames = [
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...`,
+      `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!`,
+    ];
+
+    const spinMsg = await message.reply(spinFrames[0]);
+    const frameDelay = ms => new Promise(r => setTimeout(r, ms));
+
+    // Start image render and frame animation in parallel
+    const imagePromise = (async () => {
+      const tmpResult = path.join(tmpDir, `slot_result_${senderID}_${Date.now()}.png`);
+      const resultBuf = await drawSlotImage([reel1, reel2, reel3], { ...statusBase, type: resultType });
+      fs.writeFileSync(tmpResult, resultBuf);
+      return tmpResult;
+    })();
+
+    for (let i = 1; i < spinFrames.length; i++) {
+      await frameDelay(400);
+      try { await api.editMessage(spinFrames[i], spinMsg.messageID); } catch {}
+    }
+
+    // Wait for image to finish rendering (may already be done)
+    const tmpResult = await imagePromise;
+
+    // Unsend spinning text, send result image
+    try { await api.unsendMessage(spinMsg.messageID); } catch {}
+
+    await message.reply({
+      body: `${resultLine}\n💰 𝗕𝗔𝗟𝗔𝗡𝗖𝗘: ${formatBalance(newBalance)}\n${spinInfo}`,
+      attachment: fs.createReadStream(tmpResult),
+    });
+
+    try { fs.unlinkSync(tmpResult); } catch {}
   }
 };
