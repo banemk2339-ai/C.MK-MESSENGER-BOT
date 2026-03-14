@@ -19,7 +19,7 @@ const SYMBOLS = [
 module.exports = {
   config: {
     name: "slot2",
-    aliases: ["slots"],
+    aliases: ["slots2"],
     version: "3.0",
     author: "CharlesMK",
     countDown: 30,
