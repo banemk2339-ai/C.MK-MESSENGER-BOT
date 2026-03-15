@@ -20,7 +20,7 @@ module.exports = {
   config: {
     name: "slot2",
     aliases: ["slots2"],
-    version: "3.0",
+    version: "3.1",
     author: "CharlesMK",
     countDown: 30,
     role: 0,
@@ -29,7 +29,7 @@ module.exports = {
     },
     category: "game",
     guide: {
-      en: "{pn} <amount>\nExample: {pn} 50\n\n⏰ Limit: 10 spins per hour"
+      en: "{pn} <amount>\nExample: {pn} 50\n\n⏰ Limit: 10 spins per hour\n💵 Max bet: $5,000,000"
     }
   },
 
@@ -98,7 +98,6 @@ module.exports = {
       ctx.textAlign = "center";
       ctx.font = "bold 54px Arial";
 
-      // 3D depth layers — dark offset copies stacked to simulate extrusion
       const depthColor = "#7a5500";
       for (let d = 6; d >= 1; d--) {
         ctx.globalAlpha = 0.55;
@@ -107,7 +106,6 @@ module.exports = {
         ctx.fillText("MK SLOTS", W / 2 + d, 68 + d);
       }
 
-      // drop shadow beneath the 3D stack
       ctx.globalAlpha = 0.35;
       ctx.shadowColor = "#000000";
       ctx.shadowBlur = 10;
@@ -118,14 +116,12 @@ module.exports = {
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 0;
 
-      // glow bloom pass
       ctx.globalAlpha = 0.3;
       ctx.shadowColor = "#ffd700";
       ctx.shadowBlur = 40;
       ctx.fillStyle = "#ffd700";
       ctx.fillText("MK SLOTS", W / 2, 68);
 
-      // crisp front face — bright gold
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 12;
       ctx.shadowColor = "#ffd700";
@@ -137,7 +133,6 @@ module.exports = {
       const panelX = 80, panelY = 90, panelW = 640, panelH = 220;
       const radius = 24;
 
-      // panel background
       ctx.save();
       ctx.beginPath();
       ctx.moveTo(panelX + radius, panelY);
@@ -153,7 +148,6 @@ module.exports = {
       ctx.fillStyle = "rgba(40, 32, 80, 0.92)";
       ctx.fill();
 
-      // neon border
       ctx.strokeStyle = "#5af";
       ctx.lineWidth = 3;
       ctx.shadowColor = "#5af";
@@ -161,7 +155,6 @@ module.exports = {
       ctx.stroke();
       ctx.restore();
 
-      // dividers
       ctx.save();
       ctx.strokeStyle = "rgba(120,160,255,0.35)";
       ctx.lineWidth = 1.5;
@@ -182,7 +175,6 @@ module.exports = {
         const cellCx = panelX + cellW * i + cellW / 2;
         const cellCy = panelY + panelH / 2;
         if (!sym) {
-          // spinning placeholder — draw a "?" or blurred bars
           ctx.save();
           ctx.font = "bold 72px Arial";
           ctx.textAlign = "center";
@@ -196,7 +188,6 @@ module.exports = {
             const imgSize = 130;
             ctx.drawImage(img, cellCx - imgSize / 2, cellCy - imgSize / 2, imgSize, imgSize);
           } catch {
-            // fallback text if image missing
             ctx.save();
             ctx.font = "bold 72px Arial";
             ctx.textAlign = "center";
@@ -208,36 +199,30 @@ module.exports = {
         }
       }
 
-      // ── white glow text — used for banner win/loss/balance lines ──
       function drawGlowText(text, x, y, font, glowColor, align) {
         ctx.save();
         ctx.font = font;
         ctx.textAlign = align || "left";
         ctx.textBaseline = "alphabetic";
-        // outer bloom
         ctx.globalAlpha = 0.2;
         ctx.shadowColor = glowColor;
         ctx.shadowBlur = 28;
         ctx.fillStyle = "#ffffff";
         ctx.fillText(text, x, y);
-        // mid glow
         ctx.globalAlpha = 0.55;
         ctx.shadowBlur = 14;
         ctx.fillText(text, x, y);
-        // crisp solid
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 7;
         ctx.fillText(text, x, y);
         ctx.restore();
       }
 
-      // ── white 3D glow text — used for PLAYER and BET ──
       function draw3DWhiteText(text, x, y, font, align) {
         ctx.save();
         ctx.font = font;
         ctx.textAlign = align || "left";
         ctx.textBaseline = "alphabetic";
-        // 3D depth stack — dark grey offset copies
         for (let d = 4; d >= 1; d--) {
           ctx.globalAlpha = 0.5;
           ctx.shadowBlur = 0;
@@ -245,7 +230,6 @@ module.exports = {
           const ox = align === "right" ? -d : d;
           ctx.fillText(text, x + ox, y + d);
         }
-        // drop shadow
         ctx.globalAlpha = 0.3;
         ctx.shadowColor = "#000000";
         ctx.shadowBlur = 8;
@@ -255,13 +239,11 @@ module.exports = {
         ctx.fillText(text, x, y);
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
-        // glow bloom
         ctx.globalAlpha = 0.25;
         ctx.shadowColor = "#aaddff";
         ctx.shadowBlur = 22;
         ctx.fillStyle = "#ffffff";
         ctx.fillText(text, x, y);
-        // crisp white front face
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 8;
         ctx.shadowColor = "#aaddff";
@@ -301,7 +283,6 @@ module.exports = {
         line1 = `✨  WIN +${formatBalance(status.reward)}`;
         line2 = `NEW BALANCE: ${formatBalance(status.newBalance)}`;
       } else {
-        // loss — purple/blue instead of red
         bannerColor = "rgba(20,10,70,0.95)";
         bannerBorder = "#7055ee";
         bannerGlow = "#7055ee";
@@ -330,7 +311,6 @@ module.exports = {
       ctx.stroke();
       ctx.restore();
 
-      // banner text — bold Arial, triple-pass white glow
       if (line2) {
         drawGlowText(line1, bannerX + bannerW / 2, bannerY + 32, "bold 22px Arial", bannerGlow, "center");
         drawGlowText(line2, bannerX + bannerW / 2, bannerY + 58, "bold 17px Arial", bannerGlow, "center");
@@ -338,7 +318,6 @@ module.exports = {
         drawGlowText(line1, bannerX + bannerW / 2, bannerY + bannerH / 2 + 10, "bold 22px Arial", bannerGlow, "center");
       }
 
-      // ── neon vignette overlay (gives overall image a neon glow feel) ──
       const neonOverlay = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.78);
       neonOverlay.addColorStop(0, "rgba(0,0,0,0)");
       neonOverlay.addColorStop(0.7, "rgba(20,10,60,0.0)");
@@ -346,7 +325,6 @@ module.exports = {
       ctx.fillStyle = neonOverlay;
       ctx.fillRect(0, 0, W, H);
 
-      // subtle cyan edge glow lines (top + bottom)
       const topGlow = ctx.createLinearGradient(0, 0, 0, 12);
       topGlow.addColorStop(0, "rgba(80,180,255,0.35)");
       topGlow.addColorStop(1, "rgba(80,180,255,0)");
@@ -385,7 +363,7 @@ module.exports = {
       );
     }
 
-    // ── validate bet ─────────────────────────────────────────────────────────
+    // ── validate bet ──────────────────────────────────────────────────────────
 
     const spinAmount = parseInt(args[0]);
     if (!spinAmount || spinAmount <= 0) {
@@ -414,6 +392,26 @@ module.exports = {
 
     const userData = await usersData.get(senderID);
     const balance = userData.money || 0;
+
+    // Wallet cap — must bank excess before playing
+    if (balance > 500000000) {
+      return message.reply(
+        `🏦 𝗪𝗔𝗟𝗟𝗘𝗧 𝗢𝗩𝗘𝗥𝗟𝗢𝗔𝗗!\n\n` +
+        `💰 Your wallet: ${formatBalance(balance)}\n\n` +
+        `You're carrying too much cash to play! Deposit your money in the bank and keep your wallet under $500,000,000 before spinning.\n\n` +
+        `🏧 Use +bank deposit <amount> to store your excess funds.`
+      );
+    }
+
+    // Bet limit — max $5,000,000 per spin
+    if (spinAmount > 5000000) {
+      return message.reply(
+        `🚫 𝗕𝗘𝗧 𝗟𝗜𝗠𝗜𝗧 𝗘𝗫𝗖𝗘𝗘𝗗𝗘𝗗\n\n` +
+        `Maximum bet per spin is $5,000,000.\n` +
+        `💡 Use +bank to grow your money safely instead.`
+      );
+    }
+
     if (spinAmount > balance) {
       return message.reply(`❌ Insufficient funds.\n💰 Your balance: ${formatBalance(balance)}`);
     }
@@ -437,7 +435,6 @@ module.exports = {
     const reel2 = spin();
     const reel3 = spin();
 
-    // Determine outcome based on matches
     let reward = 0;
     let resultType = "loss";
 
@@ -450,17 +447,13 @@ module.exports = {
       );
 
     if (allSame) {
-      // 3 matching = jackpot (6x)
       resultType = "jackpot";
       reward = spinAmount * 6;
     } else if (twoSame) {
-      // 2 matching = win (2x or 3x based on which pair)
-      // award 3x if the pair is reel1+reel3 (harder), else 2x
       const multiplier = (reel1.name === reel3.name) ? 3 : 2;
       resultType = "win";
       reward = spinAmount * multiplier;
     } else {
-      // all different = loss
       resultType = "loss";
       reward = -spinAmount;
     }
@@ -477,7 +470,7 @@ module.exports = {
       money: newBalance,
     });
 
-    // ── send spinning text immediately, draw image in parallel ──────────────
+    // ── send spinning text immediately, draw image in parallel ───────────────
 
     const tmpDir = path.join(__dirname, "tmp");
     if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
@@ -503,7 +496,6 @@ module.exports = {
       resultLine = `💸 𝙔𝙊𝙐 𝙇𝙊𝙎𝙏 -${formatBalance(spinAmount)}`;
     }
 
-    // Animated spinning text — loops until image is ready
     const spinFrames = [
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...`,
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...`,
@@ -515,7 +507,6 @@ module.exports = {
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...\n🎴 𝙍𝙚𝙫𝙚𝙖𝙡𝙞𝙣𝙜 𝙨𝙤𝙤𝙣...`,
     ];
 
-    // Looping tail frames — cycles while image is still rendering
     const loopFrames = [
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...\n🎴 𝙍𝙚𝙫𝙚𝙖𝙡𝙞𝙣𝙜 𝙨𝙤𝙤𝙣...\n🎰 𝙃𝙤𝙡𝙙 𝙤𝙣...`,
       `🎰 𝘽𝙚𝙜𝙞𝙣𝙨 𝙨𝙥𝙞𝙣𝙣𝙞𝙣𝙜...\n\n🎲 𝙏𝙝𝙚 𝙧𝙚𝙚𝙡𝙨 𝙖𝙧𝙚 𝙩𝙪𝙧𝙣𝙞𝙣𝙜...\n🌀 𝙎𝙥𝙞𝙣𝙣𝙞𝙣𝙜 𝙛𝙖𝙨𝙩...\n✨ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙩𝙝𝙚𝙧𝙚...\n🎯 𝙍𝙚𝙚𝙡𝙨 𝙨𝙡𝙤𝙬𝙞𝙣𝙜 𝙙𝙤𝙬𝙣...\n🔒 𝙎𝙩𝙤𝙥𝙥𝙞𝙣𝙜!\n⏳ 𝙒𝙖𝙞𝙩𝙞𝙣𝙜 𝙛𝙤𝙧 𝙧𝙚𝙨𝙪𝙡𝙩...\n🎴 𝙍𝙚𝙫𝙚𝙖𝙡𝙞𝙣𝙜 𝙨𝙤𝙤𝙣...\n🎰 𝙃𝙤𝙡𝙙 𝙤𝙣...\n⚡ 𝘼𝙡𝙢𝙤𝙨𝙩 𝙧𝙚𝙖𝙙𝙮...`,
@@ -524,7 +515,6 @@ module.exports = {
     const spinMsg = await message.reply(spinFrames[0]);
     const frameDelay = ms => new Promise(r => setTimeout(r, ms));
 
-    // Start image render in parallel
     let imageReady = false;
     let tmpResultPath = null;
     const imagePromise = (async () => {
@@ -535,14 +525,12 @@ module.exports = {
       imageReady = true;
     })();
 
-    // Play through intro frames
     for (let i = 1; i < spinFrames.length; i++) {
       if (imageReady) break;
       await frameDelay(400);
       try { await api.editMessage(spinFrames[i], spinMsg.messageID); } catch {}
     }
 
-    // Keep looping tail frames until image is ready
     let loopIdx = 0;
     while (!imageReady) {
       await frameDelay(500);
@@ -551,11 +539,9 @@ module.exports = {
       loopIdx++;
     }
 
-    // Wait for image (should be ready by now, but just in case)
     await imagePromise;
     const tmpResult = tmpResultPath;
 
-    // Unsend spinning text, send result image
     try { await api.unsendMessage(spinMsg.messageID); } catch {}
 
     await message.reply({
