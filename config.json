@@ -45,7 +45,7 @@
   },
   "database": {
     "type": "mongodb",
-    "uriMongodb": "mongodb+srv://Charles_Goatbot:bane2339@cluster0.obbefvz.mongodb.net/CharlesMK_DB?retryWrites=true&w=majority&appName=Cluster0",
+    "uriMongodb": "mongodb+srv://Akatsuki:akatsuki2339@cluster0.lljnvwy.mongodb.net/?appName=Cluster0",
     "autoSyncWhenStart": true,
     "autoRefreshThreadInfoFirstTime": true,
     "notes": "Using MongoDB to prevent data loss on Render. autoSyncWhenStart is set to true to ensure data persistence."
